@@ -47,26 +47,18 @@ export default function Register() {
         })
 
       if (profileError) {
-        setMessage('Account created but profile setup failed. Please contact support.')
+        setMessage('Account created but profile setup failed: ' + profileError.message + '. Please contact support.')
         setLoading(false)
         return
       }
 
-      // If tutor, create tutor profile
+      // Handle role-specific setup
       if (formData.role === 'tutor') {
-        const { error: tutorError } = await supabase
-          .from('tutor_profiles')
-          .insert({
-            user_id: authData.user.id,
-          })
-
-        if (tutorError) {
-          console.error('Tutor profile creation failed:', tutorError)
-        }
-      }
-
-      // If student, create student profile
-      if (formData.role === 'student') {
+        // Tutors will complete their profile later via /profile/setup
+        // Don't create an empty tutor profile automatically
+        setMessage('Registration successful! Please check your email to verify your account, then complete your tutor profile setup.')
+      } else {
+        // If student, create student profile
         const { error: studentError } = await supabase
           .from('students')
           .insert({
@@ -75,10 +67,11 @@ export default function Register() {
 
         if (studentError) {
           console.error('Student profile creation failed:', studentError)
+          setMessage('Account created but student profile setup failed. Please contact support.')
+        } else {
+          setMessage('Registration successful! Please check your email to verify your account.')
         }
       }
-
-      setMessage('Registration successful! Please check your email to verify your account.')
     }
 
     setLoading(false)
@@ -144,6 +137,22 @@ export default function Register() {
               />
             </div>
           </div>
+
+          {/* Tutor Notice */}
+          {formData.role === 'tutor' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <div className="text-blue-400 text-xl mr-3">ℹ️</div>
+                <div>
+                  <h3 className="text-blue-800 font-medium">Tutor Application Process</h3>
+                  <p className="text-blue-700 text-sm mt-1">
+                    After registration, you'll need to complete your tutor profile with subjects, grades, bio, and calendar link. 
+                    All tutor profiles require admin approval before becoming active.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {message && (
             <div className={`text-sm text-center ${message.includes('successful') ? 'text-green-600' : 'text-red-600'}`}>
