@@ -4,13 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { User, TutorProfile } from '@/types/database'
 import Link from 'next/link'
-import { useAuth } from '@/contexts/AuthContext'
-
-const APPROVED_SUBJECTS = [
-  'Mathematics', 'English', 'French', 'Computer Science',
-  'Biology', 'Chemistry', 'Physics', 'Economics',
-  'SAT Prep', 'ACT Prep', 'University Admissions'
-]
+import LogSessionForm from '@/components/LogSessionForm'
 
 interface TutorDashboardProps {
   user: User
@@ -22,6 +16,10 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
   const [loading, setLoading] = useState(true)
   const [showLogForm, setShowLogForm] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'sessions'>('overview')
+  
+  // ✅ State for editing sessions
+  const [editingSession, setEditingSession] = useState<string | null>(null)
+  const [editSessionData, setEditSessionData] = useState<any>({})
 
   useEffect(() => {
     fetchTutorProfile()
@@ -35,17 +33,23 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
 
   const fetchTutorProfile = async () => {
     try {
-      const { data: profileData } = await supabase
+      console.log('🔍 Fetching tutor profile for user:', user.id)
+      
+      const { data: profileData, error } = await supabase
         .from('tutor_profiles')
         .select('*')
         .eq('user_id', user.id)
         .single()
 
+      console.log('📊 Tutor profile result:', { profileData, error })
+
       if (profileData) {
         setProfile(profileData)
+      } else {
+        console.log('⚠️ No tutor profile found')
       }
     } catch (error) {
-      console.error('Error fetching tutor profile:', error)
+      console.error('💥 Error fetching tutor profile:', error)
     } finally {
       setLoading(false)
     }
@@ -55,21 +59,36 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
     if (!profile) return
 
     try {
+      console.log('🔍 Fetching sessions for tutor:', profile.id)
+      
       const { data } = await supabase
         .from('sessions')
         .select(`
           *,
-          student:students(
-            user:users(name, email)
+          student:students (
+            id,
+            grade_level,
+            school,
+            parent_contact_email,
+            parent_contact_phone,
+            users!inner (
+              name,
+              email
+            )
           ),
-          payment:payments(id, student_paid, tutor_paid)
+          payments (
+            id,
+            student_paid,
+            tutor_paid
+          )
         `)
         .eq('tutor_id', profile.id)
         .order('scheduled_at', { ascending: false })
 
+      console.log('📊 Sessions result:', { count: data?.length, data })
       setSessions(data || [])
     } catch (error) {
-      console.error('Error fetching sessions:', error)
+      console.error('💥 Error fetching sessions:', error)
     }
   }
 
@@ -78,149 +97,68 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
     fetchSessions()
   }
 
+  // ✅ Handle session status updates
+  const handleEditSession = (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId)
+    if (session) {
+      setEditingSession(sessionId)
+      setEditSessionData({
+        status: session.status,
+        notes: session.notes || ''
+      })
+    }
+  }
+
+  const handleSaveSessionEdit = async (sessionId: string) => {
+    try {
+      console.log('💾 Updating session:', sessionId, editSessionData)
+      
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          status: editSessionData.status,
+          notes: editSessionData.notes
+        })
+        .eq('id', sessionId)
+
+      if (error) {
+        console.error('❌ Error updating session:', error)
+        alert('Error updating session')
+      } else {
+        console.log('✅ Session updated successfully')
+        setEditingSession(null)
+        fetchSessions() // Refresh the list
+      }
+    } catch (error) {
+      console.error('💥 Unexpected error updating session:', error)
+      alert('Error updating session')
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingSession(null)
+    setEditSessionData({})
+  }
+
   // Calculate earnings
   const completedSessions = sessions.filter(s => s.status === 'completed')
   const totalEarnings = completedSessions.length * 25
-  const paidEarnings = completedSessions.filter(s => s.payment?.[0]?.tutor_paid).length * 25
-  const unpaidEarnings = totalEarnings - paidEarnings
+  const paidEarnings = completedSessions.filter(s => s.payments?.some((p: any) => p.tutor_paid)).length * 25
 
-  if (loading) {
-    return <div className="p-6">Loading your dashboard...</div>
-  }
+  const upcomingSessions = sessions.filter(s => 
+    s.status === 'scheduled' && new Date(s.scheduled_at) > new Date()
+  )
 
-  // No profile exists - needs setup
-  if (!profile) {
-    return (
-      <div className="text-center py-12">
-        <div className="text-6xl mb-4">🎓</div>
-        <h2 className="text-xl font-medium text-gray-900 mb-4">
-          Complete Your Tutor Profile
-        </h2>
-        <p className="text-gray-600 mb-6">
-          Set up your subjects, pricing, and bio to start your application process.
-        </p>
-        <Link
-          href="/profile/setup"
-          className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
-        >
-          Set Up Profile
-        </Link>
-      </div>
-    )
-  }
-
-  // Profile exists but not approved
-  if (!profile.is_active) {
-    return (
-      <div className="space-y-6">
-        {/* Pending Approval Status */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <div className="text-center">
-            <div className="text-6xl mb-4">⏳</div>
-            <h2 className="text-xl font-medium text-yellow-800 mb-2">
-              Profile Submitted for Review
-            </h2>
-            <p className="text-yellow-700 mb-6">
-              Your tutor profile has been submitted and is currently under review by our admin team. 
-              You'll receive an email notification once your profile is approved and activated.
-            </p>
-            <div className="bg-white rounded-lg p-4 mb-6">
-              <h3 className="font-medium text-gray-900 mb-2">Review typically takes:</h3>
-              <p className="text-gray-600 text-sm">• 24-48 hours during business days</p>
-              <p className="text-gray-600 text-sm">• We may contact you if additional information is needed</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Profile Summary */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">Your Submitted Profile</h3>
-              <Link
-                href="/profile/edit"
-                className="text-blue-600 hover:text-blue-800 text-sm"
-              >
-                Edit Profile
-              </Link>
-            </div>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Teaching Subjects</h4>
-                {profile.subjects && profile.subjects.length > 0 ? (
-                  <div className="space-y-1">
-                    {profile.subjects.map((subject, index) => (
-                      <div key={index} className="text-gray-700 text-sm">
-                        {subject}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">No subjects set</p>
-                )}
-              </div>
-
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Bio</h4>
-                <p className="text-gray-600 text-sm">
-                  {profile.bio || 'No bio provided'}
-                </p>
-                
-                {profile.calendar_link && (
-                  <div className="mt-4">
-                    <h4 className="font-medium text-gray-900 mb-1">Calendar Link</h4>
-                    <a 
-                      href={profile.calendar_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      View Calendar →
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Next Steps */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="font-medium text-blue-800 mb-3">While You Wait</h3>
-          <div className="space-y-2 text-blue-700 text-sm">
-            <p>• ✅ Ensure your calendar link is working and updated</p>
-            <p>• ✅ Prepare teaching materials for your subjects</p>
-            <p>• ✅ Review our tutoring guidelines (coming soon)</p>
-            <p>• ✅ Set up your workspace for online sessions</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Profile is approved and active
   const renderOverview = () => (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+      {/* Welcome Message */}
+      <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6">
         <div className="flex items-center">
-          <div className="text-green-400 text-4xl mr-4">🎉</div>
+          <div className="text-3xl mr-4">🎓</div>
           <div>
-            <h2 className="text-xl font-bold text-green-800 mb-1">
-              Welcome to the team, {user.name}!
-            </h2>
-            <p className="text-green-700">
-              Your tutor profile is active and students can now book sessions with you.
-            </p>
+            <h2 className="text-2xl font-bold text-gray-900">Welcome back, {user.name}!</h2>
+            <p className="text-gray-600 mt-1">Here's your tutoring dashboard</p>
           </div>
-          <Link
-            href="/profile/edit"
-            className="ml-auto bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700"
-          >
-            Edit Profile
-          </Link>
         </div>
       </div>
 
@@ -228,287 +166,308 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-md">💰</div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-green-600">Total Earnings</p>
-              <p className="text-2xl font-bold text-green-900">${totalEarnings}</p>
+            <div className="text-2xl mr-3">📅</div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Upcoming Sessions</p>
+              <p className="text-2xl font-bold text-gray-900">{upcomingSessions.length}</p>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-md">📅</div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-blue-600">Total Sessions</p>
-              <p className="text-2xl font-bold text-blue-900">{sessions.length}</p>
+            <div className="text-2xl mr-3">✅</div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Completed Sessions</p>
+              <p className="text-2xl font-bold text-gray-900">{completedSessions.length}</p>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-md">✅</div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-purple-600">Completed</p>
-              <p className="text-2xl font-bold text-purple-900">{completedSessions.length}</p>
+            <div className="text-2xl mr-3">💰</div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Earnings</p>
+              <p className="text-2xl font-bold text-green-600">${totalEarnings}</p>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-md">⏳</div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-yellow-600">Pending Payout</p>
-              <p className="text-2xl font-bold text-yellow-900">${unpaidEarnings}</p>
+            <div className="text-2xl mr-3">🏦</div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Paid Out</p>
+              <p className="text-2xl font-bold text-blue-600">${paidEarnings}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Recent Sessions */}
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={() => setShowLogForm(true)}
+            className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <span className="mr-2">📝</span>
+            Log New Session
+          </button>
+          <Link
+            href="/tutor/profile"
+            className="flex items-center justify-center px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            <span className="mr-2">⚙️</span>
+            Edit Profile
+          </Link>
+        </div>
+      </div>
+
+      {/* Upcoming Sessions */}
       <div className="bg-white rounded-lg shadow">
         <div className="p-6 border-b border-gray-200">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium text-gray-900">Recent Sessions</h3>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setActiveTab('sessions')}
-                className="text-blue-600 hover:text-blue-800 text-sm"
-              >
-                View All →
-              </button>
-              <button
-                onClick={() => setShowLogForm(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
-              >
-                Log New Session
-              </button>
-            </div>
-          </div>
+          <h3 className="text-lg font-medium text-gray-900">Upcoming Sessions</h3>
         </div>
-        
-        {sessions.length === 0 ? (
-          <div className="p-8 text-center">
-            <div className="text-gray-400 text-4xl mb-4">📚</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No sessions logged yet</h3>
-            <p className="text-gray-600 mb-4">
-              Start by logging your first tutoring session.
-            </p>
-            <button
-              onClick={() => setShowLogForm(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-            >
-              Log Your First Session
-            </button>
-          </div>
-        ) : (
-          <div className="p-6">
-            <div className="space-y-4">
-              {sessions.slice(0, 3).map((session) => (
-                <div key={session.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-medium text-gray-900">
-                        {session.student?.user?.name || session.student_notes?.replace('Student name: ', '') || 'Unknown Student'}
-                      </h4>
-                      <p className="text-sm text-gray-600">{session.subject}</p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(session.scheduled_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        session.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        session.status === 'no_show' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {session.status === 'no_show' ? 'No Show' : 
-                         session.status.charAt(0).toUpperCase() + session.status.slice(1)}
-                      </span>
-                      <p className="text-sm font-medium mt-1">
-                        Your earnings: ${session.status === 'completed' ? '25' : '0'}
-                      </p>
-                    </div>
+        <div className="p-6">
+          {upcomingSessions.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-4">📚</div>
+              <p className="text-gray-500">No upcoming sessions scheduled</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Log a new session to get started
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {upcomingSessions.slice(0, 5).map((session) => (
+                <div key={session.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {session.subject} with {session.student?.users?.name}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(session.scheduled_at).toLocaleDateString()} at{' '}
+                      {new Date(session.scheduled_at).toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                      {session.duration} min
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Profile Summary */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Your Active Profile</h3>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">Teaching Subjects</h4>
-              {profile.subjects && profile.subjects.length > 0 ? (
-                <div className="space-y-1">
-                  {profile.subjects.map((subject, index) => (
-                    <div key={index} className="text-gray-700 text-sm">
-                      {subject}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-sm">No subjects set</p>
-              )}
-            </div>
-
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">Bio</h4>
-              <p className="text-gray-600 text-sm mb-4">
-                {profile.bio || 'No bio provided'}
-              </p>
-              
-              {profile.calendar_link && (
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Calendar</h4>
-                  <a 
-                    href={profile.calendar_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 text-sm"
-                  >
-                    View Booking Calendar →
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Getting Started */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="font-medium text-blue-800 mb-3">Ready to Start Teaching!</h3>
-        <div className="space-y-2 text-blue-700 text-sm">
-          <p>• Students can now find you in the tutor directory</p>
-          <p>• Remember to log sessions after each tutoring appointment</p>
-          <p>• Track your earnings and completed sessions in the Sessions tab</p>
-          <p>• Monthly payouts are processed by admin</p>
+          )}
         </div>
       </div>
     </div>
   )
 
+  // ✅ Enhanced sessions view with editing capability
   const renderSessions = () => (
     <div className="space-y-6">
-      {/* Header with Log Session Button */}
+      {/* Action Bar */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">My Sessions</h2>
+        <h2 className="text-xl font-semibold text-gray-900">My Sessions ({sessions.length})</h2>
         <button
           onClick={() => setShowLogForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
+          <span className="mr-2">➕</span>
           Log New Session
         </button>
       </div>
 
-      {/* Earnings Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-green-900">{completedSessions.length}</div>
-          <div className="text-green-700 text-sm">Completed Sessions</div>
-        </div>
-        <div className="bg-blue-50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-blue-900">${totalEarnings}</div>
-          <div className="text-blue-700 text-sm">Total Earnings</div>
-        </div>
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-green-900">${paidEarnings}</div>
-          <div className="text-green-700 text-sm">Paid Out</div>
-        </div>
-        <div className="bg-yellow-50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-yellow-900">${unpaidEarnings}</div>
-          <div className="text-yellow-700 text-sm">Pending Payout</div>
-        </div>
-      </div>
-
       {/* Sessions List */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Session History</h3>
-        </div>
-        
-        {sessions.length === 0 ? (
-          <div className="p-8 text-center">
-            <div className="text-gray-400 text-4xl mb-4">📚</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No sessions logged yet</h3>
-            <p className="text-gray-600 mb-4">
-              Start by logging your first tutoring session.
-            </p>
-            <button
-              onClick={() => setShowLogForm(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-            >
-              Log Your First Session
-            </button>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200">
-            {sessions.map((session) => (
-              <div key={session.id} className="p-6">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="text-lg font-medium text-gray-900">
-                        {session.student?.user?.name || session.student_notes?.replace('Student name: ', '') || 'Unknown Student'}
-                      </h4>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        session.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        session.status === 'no_show' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {session.status === 'no_show' ? 'No Show' : 
-                         session.status.charAt(0).toUpperCase() + session.status.slice(1)}
-                      </span>
-                    </div>
-                    
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p><strong>Subject:</strong> {session.subject}</p>
-                      <p><strong>Date:</strong> {new Date(session.scheduled_at).toLocaleString()}</p>
-                      <p><strong>Duration:</strong> {session.duration} minutes</p>
-                      {session.notes && (
-                        <p><strong>Notes:</strong> {session.notes}</p>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date & Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Student Info
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Subject
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Notes
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {sessions.map((session) => (
+                <tr key={session.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {new Date(session.scheduled_at).toLocaleDateString()}<br/>
+                    <span className="text-gray-500">
+                      {new Date(session.scheduled_at).toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <div>
+                      <div className="font-medium">{session.student?.users?.name || 'Unknown'}</div>
+                      {session.student?.grade_level && (
+                        <div className="text-xs text-gray-500">📚 {session.student.grade_level}</div>
+                      )}
+                      {session.student?.school && (
+                        <div className="text-xs text-gray-500">🏫 {session.student.school}</div>
+                      )}
+                      {session.student?.parent_contact_email && (
+                        <div className="text-xs text-blue-600">📧 {session.student.parent_contact_email}</div>
+                      )}
+                      {session.student?.parent_contact_phone && (
+                        <div className="text-xs text-green-600">📞 {session.student.parent_contact_phone}</div>
                       )}
                     </div>
-                  </div>
-                  
-                  <div className="text-right ml-4">
-                    <div className="text-lg font-bold text-gray-900">${session.price}</div>
-                    {session.status === 'completed' && (
-                      <div className="text-sm">
-                        <div className={`${session.payment?.[0]?.tutor_paid ? 'text-green-600' : 'text-yellow-600'}`}>
-                          Your earnings: $25
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {session.payment?.[0]?.tutor_paid ? '✅ Paid' : '⏳ Pending'}
-                        </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {session.subject}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {editingSession === session.id ? (
+                      <select
+                        value={editSessionData.status}
+                        onChange={(e) => setEditSessionData({ ...editSessionData, status: e.target.value })}
+                        className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500"
+                      >
+                        <option value="scheduled">📅 Scheduled</option>
+                        <option value="completed">✅ Completed</option>
+                        <option value="no_show">❌ No-Show</option>
+                        <option value="cancelled">🚫 Cancelled</option>
+                      </select>
+                    ) : (
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        session.status === 'completed' 
+                          ? 'bg-green-100 text-green-800'
+                          : session.status === 'scheduled'
+                          ? 'bg-blue-100 text-blue-800'
+                          : session.status === 'cancelled'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {session.status}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {editingSession === session.id ? (
+                      <textarea
+                        value={editSessionData.notes}
+                        onChange={(e) => setEditSessionData({ ...editSessionData, notes: e.target.value })}
+                        className="w-full text-xs p-1 border border-gray-300 rounded focus:outline-none focus:ring-blue-500"
+                        rows={2}
+                        placeholder="Add notes..."
+                      />
+                    ) : (
+                      <div className="max-w-xs">
+                        {session.notes ? (
+                          <span className="text-gray-600">{session.notes}</span>
+                        ) : (
+                          <span className="text-gray-400 italic">No notes</span>
+                        )}
                       </div>
                     )}
-                  </div>
-                </div>
-              </div>
-            ))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {editingSession === session.id ? (
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleSaveSessionEdit(session.id)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Save"
+                        >
+                          ✅
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="text-red-600 hover:text-red-900"
+                          title="Cancel"
+                        >
+                          ❌
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleEditSession(session.id)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="Edit session"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {sessions.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-4">📖</div>
+            <p className="text-gray-500">No sessions logged yet</p>
+            <p className="text-sm text-gray-400 mt-2">
+              Click "Log New Session" to get started
+            </p>
           </div>
         )}
       </div>
     </div>
   )
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-600">Loading your dashboard...</span>
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-4xl mb-4">⚠️</div>
+        <h2 className="text-xl font-medium text-gray-900 mb-4">Tutor Profile Not Found</h2>
+        <p className="text-gray-600 mb-6">
+          It looks like your tutor profile hasn't been set up yet.
+        </p>
+        <Link
+          href="/tutor/setup"
+          className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Set Up Profile
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      {/* Navigation Tabs */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8 px-6">
+      {/* Header */}
+      <div className="bg-white shadow">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <nav className="flex space-x-8" aria-label="Tabs">
             <button
               onClick={() => setActiveTab('overview')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
@@ -544,289 +503,6 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
           onCancel={() => setShowLogForm(false)}
         />
       )}
-    </div>
-  )
-}
-
-// Log Session Form Component (inline for completeness)
-function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => void, onCancel: () => void }) {
-  const { user } = useAuth()
-  const [loading, setLoading] = useState(false)
-  const [students, setStudents] = useState<any[]>([])
-  const [tutorProfile, setTutorProfile] = useState<any>(null)
-  const [formData, setFormData] = useState({
-    student_id: '',
-    student_name: '',
-    scheduled_at: '',
-    duration: 60,
-    subject: '',
-    status: 'completed' as 'completed' | 'no_show' | 'cancelled',
-    notes: ''
-  })
-
-  useEffect(() => {
-    fetchStudents()
-    fetchTutorProfile()
-    
-    // Set default date/time to now
-    const now = new Date()
-    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16)
-    setFormData(prev => ({ ...prev, scheduled_at: localDateTime }))
-  }, [user])
-
-  const fetchStudents = async () => {
-    try {
-      const { data } = await supabase
-        .from('students')
-        .select(`
-          id,
-          user:users(name, email)
-        `)
-        .order('created_at', { ascending: false })
-
-      setStudents(data || [])
-    } catch (error) {
-      console.error('Error fetching students:', error)
-    }
-  }
-
-  const fetchTutorProfile = async () => {
-    if (!user) return
-
-    try {
-      const { data } = await supabase
-        .from('tutor_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single()
-
-      setTutorProfile(data)
-    } catch (error) {
-      console.error('Error fetching tutor profile:', error)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user || !tutorProfile) return
-
-    setLoading(true)
-
-    try {
-      let studentId = formData.student_id
-
-      if (!studentId && !formData.student_name.trim()) {
-        alert('Please select a student or enter a student name')
-        setLoading(false)
-        return
-      }
-
-      // Create session record
-      const sessionData = {
-        student_id: studentId || null,
-        tutor_id: tutorProfile.id,
-        scheduled_at: formData.scheduled_at,
-        duration: formData.duration,
-        subject: formData.subject,
-        status: formData.status,
-        price: 50,
-        notes: studentId ? formData.notes : `New student: ${formData.student_name}. ${formData.notes}`,
-        student_notes: studentId ? null : `Student name: ${formData.student_name}`,
-        created_at: new Date().toISOString()
-      }
-
-      const { data: session, error: sessionError } = await supabase
-        .from('sessions')
-        .insert(sessionData)
-        .select()
-        .single()
-
-      if (sessionError) throw sessionError
-
-      // Create payment record if session was completed
-      if (formData.status === 'completed') {
-        await supabase
-          .from('payments')
-          .insert({
-            session_id: session.id,
-            amount: 50,
-            student_paid: false,
-            tutor_paid: false,
-            created_at: new Date().toISOString()
-          })
-      }
-
-      alert('Session logged successfully!')
-      onSessionLogged()
-
-    } catch (error) {
-      console.error('Error logging session:', error)
-      alert('Error logging session. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Log Session</h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Student Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Student *
-              </label>
-              <select
-                value={formData.student_id}
-                onChange={(e) => setFormData({ ...formData, student_id: e.target.value, student_name: '' })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select existing student...</option>
-                {students.map((student) => {
-                  console.log('Rendering student:', student)
-                  return (
-                    <option key={student.id} value={student.id}>
-                      {student.user?.name || 'Unknown'} ({student.user?.email || 'No email'})
-                    </option>
-                  )
-                })}
-              </select>
-              
-              {students.length === 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  No students found. You can still enter a new student name below.
-                </p>
-              )}
-              
-              <div className="mt-2">
-                <input
-                  type="text"
-                  placeholder="Or enter new student name"
-                  value={formData.student_name}
-                  onChange={(e) => setFormData({ ...formData, student_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  New students will need to create an account later
-                </p>
-              </div>
-            </div>
-
-            {/* Date & Time */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Session Date & Time *
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.scheduled_at}
-                onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-
-            {/* Duration */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duration (minutes) *
-              </label>
-              <select
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value={30}>30 minutes</option>
-                <option value={60}>60 minutes</option>
-                <option value={90}>90 minutes</option>
-                <option value={120}>120 minutes</option>
-              </select>
-            </div>
-
-            {/* Subject */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Subject *
-              </label>
-              <select
-                value={formData.subject}
-                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                required
-              >
-                <option value="">Select subject...</option>
-                {APPROVED_SUBJECTS.map((subject) => (
-                  <option key={subject} value={subject}>{subject}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Status */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Session Status *
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="completed">Completed</option>
-                <option value="no_show">Student No-Show</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notes (optional)
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Any additional notes about the session..."
-              />
-            </div>
-
-            {/* Pricing Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-800">
-                <strong>Rate:</strong> $50/hour • <strong>Your earnings:</strong> $25/hour
-              </p>
-              <p className="text-xs text-blue-600 mt-1">
-                Payment tracking will be handled by admin
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loading ? 'Logging...' : 'Log Session'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
     </div>
   )
 }
