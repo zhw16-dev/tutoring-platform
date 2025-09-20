@@ -16,6 +16,7 @@ export interface TutorProfile {
   }
   bio?: string
   calendar_link?: string
+  etransfer_email?: string
   is_active: boolean
   created_at: string
   user?: User // For when we join with users table
@@ -55,6 +56,9 @@ export interface Payment {
   amount: number
   student_paid: boolean
   tutor_paid: boolean
+  student_payment_date?: string
+  tutor_payout_date?: string
+  admin_notes?: string
   payment_date?: string
   created_at: string
 }

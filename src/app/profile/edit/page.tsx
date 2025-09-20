@@ -32,6 +32,7 @@ export default function ProfileEdit() {
     subjects: {} as { [subject: string]: string[] },
     bio: '',
     calendar_link: '',
+    etransfer_email: '',
     is_active: true
   })
 
@@ -80,6 +81,7 @@ export default function ProfileEdit() {
           subjects: subjectsObj,
           bio: data.bio || '',
           calendar_link: data.calendar_link || '',
+          etransfer_email: data.etransfer_email || '',
           is_active: data.is_active ?? true
         })
       }
@@ -139,7 +141,8 @@ export default function ProfileEdit() {
       getSelectedSubjectsCount() > 0 &&
       formData.bio.trim().length >= 100 &&
       formData.calendar_link.trim().length > 0 &&
-      formData.calendar_link.includes('http')
+      formData.calendar_link.includes('http') &&
+      formData.etransfer_email.trim().length > 0
     )
   }
 
@@ -160,6 +163,7 @@ export default function ProfileEdit() {
           pricing: pricing,
           bio: formData.bio.trim(),
           calendar_link: formData.calendar_link.trim(),
+          etransfer_email: formData.etransfer_email.trim(),
           is_active: formData.is_active
         })
         .eq('user_id', user.id)
@@ -299,6 +303,24 @@ export default function ProfileEdit() {
                 </div>
               </div>
 
+              {/* E-transfer Email */}
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Payment Information *
+                </h2>
+                <input
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={formData.etransfer_email}
+                  onChange={(e) => setFormData({ ...formData, etransfer_email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+                <div className="text-sm text-gray-500 mt-2">
+                  <p>🔒 Only visible to admin for payment processing</p>
+                </div>
+              </div>
+
               {/* Calendar Link */}
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -354,6 +376,9 @@ export default function ProfileEdit() {
                     )}
                     {formData.calendar_link.trim() && !formData.calendar_link.includes('http') && (
                       <li>• Calendar link must start with http:// or https://</li>
+                    )}
+                    {!formData.etransfer_email.trim() && (
+                      <li>• Add your e-transfer email for payments</li>
                     )}
                   </ul>
                 </div>

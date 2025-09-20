@@ -8,747 +8,757 @@ interface AdminDashboardProps {
   user: User
 }
 
-export default function AdminDashboard({ user }: AdminDashboardProps) {
-  const [stats, setStats] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'tutors' | 'students' | 'users' | 'sessions'>('overview')
+interface PendingTutor {
+  id: string
+  user_id: string
+  subjects: string[]
+  bio: string
+  calendar_link: string
+  etransfer_email: string
+  is_active: boolean
+  created_at: string
+  user_name: string
+  user_email: string
+}
 
-  // Detailed view states
-  const [allTutors, setAllTutors] = useState<any[]>([])
-  const [allStudents, setAllStudents] = useState<any[]>([])
-  const [allSessions, setAllSessions] = useState<any[]>([])
-  const [allUsers, setAllUsers] = useState<any[]>([])
-  
-  // Filter states for sessions
-  const [sessionFilters, setSessionFilters] = useState({
-    tutor: '',
-    student: '',
-    status: '',
-    dateFrom: '',
-    dateTo: ''
-  })
-  
-  // Options for dropdowns
-  const [tutorOptions, setTutorOptions] = useState<any[]>([])
-  const [studentOptions, setStudentOptions] = useState<any[]>([])
+interface AdminStats {
+  totalUsers: number
+  totalTutors: number
+  activeTutors: number
+  pendingTutors: number
+  totalStudents: number
+  totalSessions: number
+  completedSessions: number
+  pendingPayments: number
+  unpaidStudentAmount: number
+  unpaidTutorAmount: number
+}
+
+interface PaymentRecord {
+  id: string
+  session_id: string
+  amount: number
+  student_paid: boolean
+  tutor_paid: boolean
+  student_name: string
+  tutor_name: string
+  tutor_etransfer: string
+  subject: string
+  session_date: string
+}
+
+export default function AdminDashboard({ user }: AdminDashboardProps) {
+  const [stats, setStats] = useState<AdminStats | null>(null)
+  const [pendingTutors, setPendingTutors] = useState<PendingTutor[]>([])
+  const [pendingPayments, setPendingPayments] = useState<PaymentRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'overview' | 'tutors' | 'payments'>('overview')
 
   useEffect(() => {
-    fetchStats()
+    fetchAdminData()
   }, [])
 
-  // Load detailed data when tabs are switched
-  useEffect(() => {
-    if (activeTab === 'tutors' && allTutors.length === 0) {
-      fetchAllTutors()
-    }
-    if (activeTab === 'students' && allStudents.length === 0) {
-      fetchAllStudents()
-    }
-    if (activeTab === 'users' && allUsers.length === 0) {
-      fetchAllUsers()
-    }
-    if (activeTab === 'sessions' && allSessions.length === 0) {
-      fetchAllSessions()
-      fetchTutorOptions()
-      fetchStudentOptions()
-    }
-  }, [activeTab])
-
-  const fetchStats = async () => {
+  const fetchAdminData = async () => {
     try {
+      console.log('Fetching admin data...')
+      
       // Get user counts
-      const { data: usersData } = await supabase
+      const { count: totalUsers } = await supabase
         .from('users')
-        .select('role')
+        .select('*', { count: 'exact', head: true })
 
-      const totalUsers = usersData?.length || 0
-      const totalTutors = usersData?.filter(u => u.role === 'tutor').length || 0
-      const totalStudents = usersData?.filter(u => u.role === 'student').length || 0
+      const { count: totalTutors } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'tutor')
 
-      // Get session stats
-      const { data: sessionsData } = await supabase
-        .from('sessions')
-        .select('status, price, scheduled_at, created_at, tutor_id')
+      const { count: totalStudents } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'student')
 
-      const totalSessions = sessionsData?.length || 0
-      const completedSessions = sessionsData?.filter(s => s.status === 'completed').length || 0
-      const totalRevenue = sessionsData?.filter(s => s.status === 'completed')
-        .reduce((sum, s) => sum + (s.price || 0), 0) || 0
-
-      // ✅ Enhanced analytics
-      const now = new Date()
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-
-      // Sessions this week
-      const sessionsThisWeek = sessionsData?.filter(s => 
-        new Date(s.scheduled_at) >= oneWeekAgo
-      ).length || 0
-
-      // Cancellation rate
-      const cancelledSessions = sessionsData?.filter(s => s.status === 'cancelled').length || 0
-      const cancellationRate = totalSessions > 0 ? Math.round((cancelledSessions / totalSessions) * 100) : 0
-
-      // Active users this month (users with sessions)
-      const activeThisMonth = new Set(
-        sessionsData?.filter(s => new Date(s.created_at) >= oneMonthAgo)
-          .map(s => s.tutor_id)
-      ).size || 0
-
-      // Get pending tutors
-      const { data: pendingTutors } = await supabase
+      // Get tutor profile counts
+      const { count: activeTutors } = await supabase
         .from('tutor_profiles')
-        .select('id')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+
+      const { count: pendingTutorCount } = await supabase
+        .from('tutor_profiles')
+        .select('*', { count: 'exact', head: true })
         .eq('is_active', false)
 
+      // Get session counts
+      const { count: totalSessions } = await supabase
+        .from('sessions')
+        .select('*', { count: 'exact', head: true })
+
+      const { count: completedSessions } = await supabase
+        .from('sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'completed')
+
+      // Get pending payments count
+      const { count: pendingPayments } = await supabase
+        .from('payments')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_paid', false)
+
+      // Get payment statistics
+      const { data: paymentsData } = await supabase
+        .from('payments')
+        .select(`
+          *,
+          session:sessions(
+            subject,
+            scheduled_at,
+            student:students(
+              user:users(name)
+            ),
+            tutor:tutor_profiles(
+              user:users(name),
+              etransfer_email
+            )
+          )
+        `)
+        .order('created_at', { ascending: false })
+
+      console.log('Payments data:', paymentsData)
+
+      let unpaidStudentAmount = 0
+      let unpaidTutorAmount = 0
+      const paymentRecords: PaymentRecord[] = []
+
+      if (paymentsData) {
+        paymentsData.forEach(payment => {
+          if (!payment.student_paid) {
+            unpaidStudentAmount += payment.amount
+          }
+          if (!payment.tutor_paid && payment.student_paid) {
+            unpaidTutorAmount += payment.amount / 2 // Tutors get 50%
+          }
+
+          paymentRecords.push({
+            id: payment.id,
+            session_id: payment.session_id,
+            amount: payment.amount,
+            student_paid: payment.student_paid,
+            tutor_paid: payment.tutor_paid,
+            student_name: payment.session?.student?.user?.name || 'Unknown',
+            tutor_name: payment.session?.tutor?.user?.name || 'Unknown', 
+            tutor_etransfer: payment.session?.tutor?.etransfer_email || 'Not provided',
+            subject: payment.session?.subject || 'Unknown',
+            session_date: payment.session?.scheduled_at ? new Date(payment.session.scheduled_at).toLocaleDateString() : 'Unknown'
+          })
+        })
+      }
+
+      setPendingPayments(paymentRecords)
+
+      console.log('Fetching pending tutors...')
+      
+      // Get pending tutors manually
+      const { data: pendingProfiles, error: profilesError } = await supabase
+        .from('tutor_profiles')
+        .select('*')
+        .eq('is_active', false)
+        .order('created_at', { ascending: true })
+
+      console.log('Manual - Pending profiles:', pendingProfiles, 'Error:', profilesError)
+
+      let tutorsWithUserData: PendingTutor[] = []
+
+      if (pendingProfiles && pendingProfiles.length > 0) {
+        // Get user data for each pending tutor
+        const userIds = pendingProfiles.map(p => p.user_id)
+        console.log('Manual - User IDs to fetch:', userIds)
+        
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('id', userIds)
+
+        console.log('Manual - User data fetched:', userData, 'Error:', userError)
+
+        if (userData && userData.length > 0) {
+          // Combine the data
+          tutorsWithUserData = pendingProfiles.map(profile => {
+            const user = userData.find(u => u.id === profile.user_id)
+            console.log(`Manual - Profile ${profile.id} has user_id: ${profile.user_id}`)
+            console.log(`Manual - Found matching user:`, user)
+            return {
+              id: profile.id,
+              user_id: profile.user_id,
+              subjects: profile.subjects || [],
+              bio: profile.bio || '',
+              calendar_link: profile.calendar_link || '',
+              etransfer_email: profile.etransfer_email || '',
+              is_active: profile.is_active,
+              created_at: profile.created_at,
+              user_name: user?.name || `Missing name for ID: ${profile.user_id}`,
+              user_email: user?.email || `Missing email for ID: ${profile.user_id}`
+            }
+          })
+        } else {
+          console.log('No user data found')
+          tutorsWithUserData = pendingProfiles.map(profile => ({
+            id: profile.id,
+            user_id: profile.user_id,
+            subjects: profile.subjects || [],
+            bio: profile.bio || '',
+            calendar_link: profile.calendar_link || '',
+            etransfer_email: profile.etransfer_email || '',
+            is_active: profile.is_active,
+            created_at: profile.created_at,
+            user_name: `No users found - ID: ${profile.user_id}`,
+            user_email: 'No users table data'
+          }))
+        }
+      }
+
+      console.log('Final tutors with user data:', tutorsWithUserData)
+
       setStats({
-        totalUsers,
-        totalTutors,
-        totalStudents,
-        totalSessions,
-        completedSessions,
-        totalRevenue,
-        sessionsThisWeek,
-        cancellationRate,
-        activeThisMonth,
-        pendingTutors: pendingTutors?.length || 0
+        totalUsers: totalUsers || 0,
+        totalTutors: totalTutors || 0,
+        activeTutors: activeTutors || 0,
+        pendingTutors: pendingTutorCount || 0,
+        totalStudents: totalStudents || 0,
+        totalSessions: totalSessions || 0,
+        completedSessions: completedSessions || 0,
+        pendingPayments: pendingPayments || 0,
+        unpaidStudentAmount: unpaidStudentAmount || 0,
+        unpaidTutorAmount: unpaidTutorAmount || 0,
       })
+
+      setPendingTutors(tutorsWithUserData)
+
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      console.error('Error fetching admin data:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchAllTutors = async () => {
+  const handleTutorApproval = async (tutorId: string, approve: boolean) => {
+    console.log('🔄 Starting approval process...')
+    console.log('Tutor ID:', tutorId)
+    console.log('Approving:', approve)
+    
     try {
-      const { data } = await supabase
+      // Step 1: Check if the tutor exists
+      console.log('📋 Checking if tutor exists...')
+      const { data: existingTutor, error: fetchError } = await supabase
         .from('tutor_profiles')
-        .select(`
-          *,
-          users!inner (
-            name,
-            email,
-            phone,
-            created_at
-          )
-        `)
-        .order('created_at', { ascending: false })
+        .select('id, user_id, is_active')
+        .eq('id', tutorId)
+        .single()
 
-      setAllTutors(data || [])
-    } catch (error) {
-      console.error('Error fetching tutors:', error)
-    }
-  }
-
-  const fetchAllStudents = async () => {
-    try {
-      console.log('🔍 Fetching all students for admin dashboard...')
+      console.log('Existing tutor:', existingTutor)
       
-      // ✅ Use DISTINCT to avoid duplicates and order by user creation
-      const { data, error } = await supabase
-        .from('users')
-        .select(`
-          id,
-          name,
-          email,
-          phone,
-          created_at,
-          students!inner (
-            id,
-            grade_level,
-            school,
-            parent_contact,
-            parent_contact_email,
-            parent_contact_phone
-          )
-        `)
-        .eq('role', 'student')
-        .order('created_at', { ascending: false })
-
-      console.log('📊 Students fetch result:', { data, error, count: data?.length })
-
-      if (error) {
-        console.error('❌ Error fetching students:', error)
-        setAllStudents([])
-      } else {
-        console.log('✅ Students fetched successfully:', data?.length || 0)
-        // Transform to match expected structure
-        const transformedStudents = (data || []).map(user => ({
-          id: user.students[0]?.id || user.id,
-          users: {
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            created_at: user.created_at
-          },
-          grade_level: user.students[0]?.grade_level,
-          school: user.students[0]?.school,
-          parent_contact: user.students[0]?.parent_contact,
-          parent_contact_email: user.students[0]?.parent_contact_email,
-          parent_contact_phone: user.students[0]?.parent_contact_phone,
-          created_at: user.created_at
-        }))
-        setAllStudents(transformedStudents)
-      }
-    } catch (error) {
-      console.error('💥 Error fetching students:', error)
-      setAllStudents([])
-    }
-  }
-
-  const fetchAllUsers = async () => {
-    try {
-      const { data } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      setAllUsers(data || [])
-    } catch (error) {
-      console.error('Error fetching users:', error)
-    }
-  }
-
-  const fetchAllSessions = async () => {
-    try {
-      let query = supabase
-        .from('sessions')
-        .select(`
-          *,
-          tutor:tutor_profiles!inner (
-            id,
-            users!inner (
-              name,
-              email
-            )
-          ),
-          student:students!inner (
-            id,
-            users!inner (
-              name,
-              email
-            )
-          )
-        `)
-
-      // Apply filters
-      if (sessionFilters.tutor) {
-        query = query.eq('tutor_id', sessionFilters.tutor)
-      }
-      if (sessionFilters.student) {
-        query = query.eq('student_id', sessionFilters.student)
-      }
-      if (sessionFilters.status) {
-        query = query.eq('status', sessionFilters.status)
-      }
-      if (sessionFilters.dateFrom) {
-        query = query.gte('scheduled_at', sessionFilters.dateFrom)
-      }
-      if (sessionFilters.dateTo) {
-        query = query.lte('scheduled_at', sessionFilters.dateTo + 'T23:59:59')
+      if (fetchError || !existingTutor) {
+        console.error('❌ Could not find tutor:', fetchError)
+        alert('Error: Could not find this tutor profile.')
+        return
       }
 
-      const { data } = await query.order('scheduled_at', { ascending: false })
-      setAllSessions(data || [])
-    } catch (error) {
-      console.error('Error fetching sessions:', error)
-    }
-  }
-
-  const fetchTutorOptions = async () => {
-    try {
-      const { data } = await supabase
+      // Step 2: Update the tutor approval status
+      console.log('✏️ Updating tutor approval status...')
+      const { data: updateResult, error: updateError } = await supabase
         .from('tutor_profiles')
-        .select(`
-          id,
-          users!inner (
-            name
-          )
-        `)
-        .order('users(name)')
+        .update({ is_active: approve })
+        .eq('id', tutorId)
+        .select()
 
-      setTutorOptions(data || [])
+      console.log('Update result:', updateResult)
+      
+      if (updateError) {
+        console.error('❌ Update failed:', updateError)
+        alert(`Update failed: ${updateError.message}`)
+        return
+      }
+
+      if (!updateResult || updateResult.length === 0) {
+        console.error('❌ No rows were updated')
+        alert('Error: No changes were made. Please try again.')
+        return
+      }
+
+      // Step 3: Double-check the change worked
+      console.log('🔍 Verifying the change worked...')
+      const { data: verifyResult } = await supabase
+        .from('tutor_profiles')
+        .select('is_active')
+        .eq('id', tutorId)
+        .single()
+
+      console.log('Verification result:', verifyResult)
+
+      if (verifyResult?.is_active === approve) {
+        console.log('✅ Success! Change confirmed in database')
+        const message = approve ? 'Tutor approved successfully!' : 'Tutor rejected successfully!'
+        alert(message)
+        
+        // Refresh the page data
+        await fetchAdminData()
+      } else {
+        console.error('❌ Verification failed')
+        alert('Error: The change did not save properly. Please try again.')
+      }
+
     } catch (error) {
-      console.error('Error fetching tutor options:', error)
+      console.error('❌ Unexpected error:', error)
+      alert('An unexpected error occurred. Please try again.')
     }
   }
 
-  const fetchStudentOptions = async () => {
+  const handleStudentPayment = async (paymentId: string) => {
     try {
-      // ✅ Fetch from users table to avoid duplicates
-      const { data } = await supabase
-        .from('users')
-        .select(`
-          id,
-          name,
-          students!inner (
-            id
-          )
-        `)
-        .eq('role', 'student')
-        .order('name')
+      const { error } = await supabase
+        .from('payments')
+        .update({ 
+          student_paid: true, 
+          student_payment_date: new Date().toISOString() 
+        })
+        .eq('id', paymentId)
 
-      // Transform to match expected structure
-      const transformedOptions = (data || []).map(user => ({
-        id: user.students[0]?.id || user.id,
-        users: {
-          name: user.name
-        }
-      }))
-
-      setStudentOptions(transformedOptions)
+      if (error) throw error
+      
+      alert('Student payment marked as received!')
+      fetchAdminData()
     } catch (error) {
-      console.error('Error fetching student options:', error)
-      setStudentOptions([])
+      console.error('Error updating student payment:', error)
+      alert('Error updating payment status')
     }
   }
 
-  // Apply filters to sessions
-  useEffect(() => {
-    if (activeTab === 'sessions') {
-      fetchAllSessions()
+  const handleTutorPayout = async (paymentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('payments')
+        .update({ 
+          tutor_paid: true, 
+          tutor_payout_date: new Date().toISOString() 
+        })
+        .eq('id', paymentId)
+
+      if (error) throw error
+      
+      alert('Tutor payout marked as completed!')
+      fetchAdminData()
+    } catch (error) {
+      console.error('Error updating tutor payout:', error)
+      alert('Error updating payout status')
     }
-  }, [sessionFilters])
+  }
+
+  if (loading) {
+    return <div className="p-6">Loading admin dashboard...</div>
+  }
 
   const renderOverview = () => (
     <div className="space-y-6">
-      {/* Quick Stats Grid */}
+      {/* Pending Approvals Alert */}
+      {stats && stats.pendingTutors > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-yellow-400 text-xl mr-3">⚠️</div>
+            <div>
+              <h3 className="text-yellow-800 font-medium">
+                {stats.pendingTutors} tutor{stats.pendingTutors !== 1 ? 's' : ''} waiting for approval
+              </h3>
+              <p className="text-yellow-700 text-sm mt-1">
+                Review pending tutor applications to activate their profiles.
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveTab('tutors')}
+              className="ml-auto bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 text-sm"
+            >
+              Review Applications
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Alert */}
+      {stats && (stats.unpaidStudentAmount > 0 || stats.unpaidTutorAmount > 0) && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-red-400 text-xl mr-3">💳</div>
+            <div>
+              <h3 className="text-red-800 font-medium">
+                Payments require attention
+              </h3>
+              <p className="text-red-700 text-sm mt-1">
+                ${stats.unpaidStudentAmount} due from students | ${stats.unpaidTutorAmount} owed to tutors
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveTab('payments')}
+              className="ml-auto bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm"
+            >
+              Manage Payments
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div 
-          onClick={() => setActiveTab('users')}
-          className="bg-blue-50 rounded-lg p-6 cursor-pointer hover:bg-blue-100 transition-colors"
-        >
+        <div className="bg-blue-50 rounded-lg p-6">
           <div className="flex items-center">
-            <div className="text-3xl mr-3">👥</div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Users</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.totalUsers || 0}</p>
+            <div className="p-2 bg-blue-100 rounded-md">👥</div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-blue-600">Total Users</p>
+              <p className="text-2xl font-bold text-blue-900">{stats?.totalUsers}</p>
             </div>
           </div>
         </div>
 
-        <div 
-          onClick={() => setActiveTab('tutors')}
-          className="bg-green-50 rounded-lg p-6 cursor-pointer hover:bg-green-100 transition-colors"
-        >
+        <div className="bg-green-50 rounded-lg p-6">
           <div className="flex items-center">
-            <div className="text-3xl mr-3">🎓</div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Active Tutors</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.totalTutors || 0}</p>
+            <div className="p-2 bg-green-100 rounded-md">🎓</div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-green-600">Active Tutors</p>
+              <p className="text-2xl font-bold text-green-900">{stats?.activeTutors}</p>
             </div>
           </div>
         </div>
 
-        <div 
-          onClick={() => setActiveTab('students')}
-          className="bg-purple-50 rounded-lg p-6 cursor-pointer hover:bg-purple-100 transition-colors"
-        >
+        <div className="bg-yellow-50 rounded-lg p-6 cursor-pointer" onClick={() => setActiveTab('tutors')}>
           <div className="flex items-center">
-            <div className="text-3xl mr-3">📚</div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Students</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.totalStudents || 0}</p>
+            <div className="p-2 bg-yellow-100 rounded-md">⏳</div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-yellow-600">Pending Approval</p>
+              <p className="text-2xl font-bold text-yellow-900">{stats?.pendingTutors}</p>
             </div>
           </div>
         </div>
 
-        <div 
-          onClick={() => setActiveTab('sessions')}
-          className="bg-yellow-50 rounded-lg p-6 cursor-pointer hover:bg-yellow-100 transition-colors"
-        >
+        <div className="bg-purple-50 rounded-lg p-6">
           <div className="flex items-center">
-            <div className="text-3xl mr-3">📝</div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Sessions</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.totalSessions || 0}</p>
+            <div className="p-2 bg-purple-100 rounded-md">📚</div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-purple-600">Students</p>
+              <p className="text-2xl font-bold text-purple-900">{stats?.totalStudents}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Enhanced Analytics */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Platform Analytics</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Total Revenue</p>
-            <p className="text-3xl font-bold text-green-600">${stats?.totalRevenue || 0}</p>
+      {/* Secondary Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Session Overview</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Total Sessions</span>
+              <span className="font-medium">{stats?.totalSessions}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Completed</span>
+              <span className="font-medium text-green-600">{stats?.completedSessions}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Success Rate</span>
+              <span className="font-medium">
+                {stats?.totalSessions 
+                  ? `${Math.round((stats.completedSessions / stats.totalSessions) * 100)}%`
+                  : '0%'
+                }
+              </span>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Sessions This Week</p>
-            <p className="text-3xl font-bold text-blue-600">{stats?.sessionsThisWeek || 0}</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Revenue Overview</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Completed Sessions</span>
+              <span className="font-medium">{stats?.completedSessions}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Platform Revenue</span>
+              <span className="font-medium text-green-600">
+                ${((stats?.completedSessions || 0) * 25).toFixed(0)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Tutor Earnings</span>
+              <span className="font-medium">
+                ${((stats?.completedSessions || 0) * 25).toFixed(0)}
+              </span>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Cancellation Rate</p>
-            <p className="text-3xl font-bold text-orange-600">{stats?.cancellationRate || 0}%</p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Active This Month</p>
-            <p className="text-3xl font-bold text-purple-600">{stats?.activeThisMonth || 0}</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Status</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Students Owe</span>
+              <span className="font-medium text-red-600">${stats?.unpaidStudentAmount}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Tutors Owed</span>
+              <span className="font-medium text-yellow-600">${stats?.unpaidTutorAmount}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Pending Items</span>
+              <span className="font-medium">{pendingPayments.filter(p => !p.student_paid || !p.tutor_paid).length}</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
   )
 
-  const renderTutorManagement = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">All Tutors ({allTutors.length})</h3>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subjects</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {allTutors.map((tutor) => (
-                <tr key={tutor.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {tutor.users.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {tutor.users.email}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {tutor.subjects ? tutor.subjects.slice(0, 2).join(', ') : 'None'}
-                    {tutor.subjects && tutor.subjects.length > 2 && '...'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      tutor.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {tutor.is_active ? 'Active' : 'Pending'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(tutor.users.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderStudentsList = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">All Students ({allStudents.length})</h3>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade Level</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parent Contact</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {allStudents.map((student) => (
-                <tr key={student.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {student.users?.name || 'Unknown'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {student.users?.email || 'No email'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {student.grade_level || 'Not specified'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {student.school || 'Not specified'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {student.parent_contact_email || student.parent_contact ? (
-                      <div>
-                        {student.parent_contact_email && (
-                          <div>📧 {student.parent_contact_email}</div>
-                        )}
-                        {student.parent_contact_phone && (
-                          <div>📞 {student.parent_contact_phone}</div>
-                        )}
-                        {!student.parent_contact_email && !student.parent_contact_phone && student.parent_contact && (
-                          <div>{student.parent_contact}</div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 italic">Not provided</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(student.users?.created_at || student.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {allStudents.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-4">📚</div>
-            <p className="text-gray-500">No students found</p>
-            <p className="text-sm text-gray-400 mt-2">Students will appear here once they register</p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-
-  const renderUsersList = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">All Users ({allUsers.length})</h3>
-          <p className="text-sm text-gray-500 mt-1">Complete user directory including students, tutors, and admins</p>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {allUsers.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {user.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.role === 'admin' 
-                        ? 'bg-red-100 text-red-800'
-                        : user.role === 'tutor' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.phone || 'Not provided'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderSessionsList = () => (
-    <div className="space-y-6">
-      {/* Session Filters */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Filter Sessions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tutor</label>
-            <select
-              value={sessionFilters.tutor}
-              onChange={(e) => setSessionFilters({ ...sessionFilters, tutor: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">All Tutors</option>
-              {tutorOptions.map((tutor) => (
-                <option key={tutor.id} value={tutor.id}>
-                  {tutor.users.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
-            <select
-              value={sessionFilters.student}
-              onChange={(e) => setSessionFilters({ ...sessionFilters, student: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">All Students</option>
-              {studentOptions.map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.users.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={sessionFilters.status}
-              onChange={(e) => setSessionFilters({ ...sessionFilters, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">All Statuses</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="no_show">No Show</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-            <input
-              type="date"
-              value={sessionFilters.dateFrom}
-              onChange={(e) => setSessionFilters({ ...sessionFilters, dateFrom: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-            <input
-              type="date"
-              value={sessionFilters.dateTo}
-              onChange={(e) => setSessionFilters({ ...sessionFilters, dateTo: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
-        
-        <div className="mt-4 flex space-x-3">
-          <button
-            onClick={() => setSessionFilters({ tutor: '', student: '', status: '', dateFrom: '', dateTo: '' })}
-            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Clear Filters
-          </button>
-          <span className="text-sm text-gray-500 flex items-center">
-            Showing {allSessions.length} sessions
-          </span>
-        </div>
-      </div>
-
-      {/* Sessions List */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">All Sessions ({allSessions.length})</h3>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tutor</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {allSessions.map((session) => (
-                <tr key={session.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(session.scheduled_at).toLocaleDateString()}<br/>
-                    <span className="text-gray-500">
-                      {new Date(session.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {session.tutor?.users?.name || 'Unknown'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {session.student?.users?.name || 'Unknown'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {session.subject}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      session.status === 'completed' 
-                        ? 'bg-green-100 text-green-800'
-                        : session.status === 'scheduled'
-                        ? 'bg-blue-100 text-blue-800'
-                        : session.status === 'cancelled'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {session.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                    {session.notes ? (
-                      <div className="truncate" title={session.notes}>
-                        {session.notes}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 italic">No notes</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${session.price || 0}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {allSessions.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-4">📝</div>
-            <p className="text-gray-500">No sessions found</p>
-            <p className="text-sm text-gray-400 mt-2">Sessions will appear here once tutors start logging them</p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-
-  if (loading) {
+  const renderTutorManagement = () => {
+    console.log('Rendering tutor management, pending tutors:', pendingTutors)
+    
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-gray-600">Loading admin dashboard...</span>
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">
+              Pending Tutor Approvals ({pendingTutors.length})
+            </h3>
+            <p className="text-gray-600 text-sm mt-1">
+              Review and approve tutor applications to activate their profiles
+            </p>
+          </div>
+          
+          <div className="p-6">
+            {pendingTutors.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-gray-400 text-4xl mb-4">✅</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
+                <p className="text-gray-600">No tutor applications pending approval.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {pendingTutors.map((tutor) => {
+                  console.log('Rendering tutor:', tutor)
+                  return (
+                    <div key={tutor.id} className="border border-gray-200 rounded-lg p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900">
+                            {tutor.user_name}
+                          </h4>
+                          <p className="text-gray-600">{tutor.user_email}</p>
+                          <p className="text-sm text-gray-500">
+                            Applied: {new Date(tutor.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          Pending Review
+                        </span>
+                      </div>
+
+                      {/* Subjects */}
+                      <div className="mb-4">
+                        <h5 className="font-medium text-gray-900 mb-2">Teaching Subjects</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {tutor.subjects.map((subject, index) => (
+                            <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {subject}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Bio */}
+                      <div className="mb-4">
+                        <h5 className="font-medium text-gray-900 mb-2">Bio</h5>
+                        <p className="text-gray-700 text-sm">{tutor.bio}</p>
+                      </div>
+
+                      {/* Calendar Link */}
+                      <div className="mb-4">
+                        <h5 className="font-medium text-gray-900 mb-2">Calendar Link</h5>
+                        <a 
+                          href={tutor.calendar_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          {tutor.calendar_link}
+                        </a>
+                      </div>
+
+                      {/* E-transfer Email */}
+                      <div className="mb-4">
+                        <h5 className="font-medium text-gray-900 mb-2">E-transfer Email</h5>
+                        <p className="text-gray-700 text-sm font-mono bg-gray-50 p-2 rounded">
+                          {tutor.etransfer_email || 'Not provided'}
+                        </p>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex space-x-3 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => handleTutorApproval(tutor.id, true)}
+                          className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                        >
+                          ✅ Approve Tutor
+                        </button>
+                        <button
+                          onClick={() => handleTutorApproval(tutor.id, false)}
+                          className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors"
+                        >
+                          ❌ Reject Application
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
 
+  const renderPaymentManagement = () => (
+    <div className="space-y-6">
+      {/* Payment Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-red-50 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="p-2 bg-red-100 rounded-md">💳</div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-red-600">Student Payments Due</p>
+              <p className="text-2xl font-bold text-red-900">${stats?.unpaidStudentAmount || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-yellow-50 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="p-2 bg-yellow-100 rounded-md">💰</div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-yellow-600">Tutor Payouts Due</p>
+              <p className="text-2xl font-bold text-yellow-900">${stats?.unpaidTutorAmount || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-md">📊</div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-blue-600">Total Pending</p>
+              <p className="text-2xl font-bold text-blue-900">{pendingPayments.filter(p => !p.student_paid || !p.tutor_paid).length}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment Management Table */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">Payment Management</h3>
+          <p className="text-gray-600 text-sm mt-1">
+            Track student payments and tutor payouts. Students pay via e-transfer, tutors get paid out manually.
+          </p>
+        </div>
+        
+        <div className="p-6">
+          {pendingPayments.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-gray-400 text-4xl mb-4">💰</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No payments to manage</h3>
+              <p className="text-gray-600">Payment records will appear here when sessions are completed.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pendingPayments.map((payment) => (
+                <div key={payment.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900">
+                        {payment.student_name} - {payment.subject}
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        Session Date: {payment.session_date} | Amount: ${payment.amount}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Tutor: {payment.tutor_name}
+                      </p>
+                      <p className="text-sm text-gray-500 font-mono bg-gray-50 p-1 rounded mt-1">
+                        E-transfer: {payment.tutor_etransfer}
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col space-y-2 ml-4">
+                      {/* Student Payment */}
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={payment.student_paid}
+                          onChange={() => handleStudentPayment(payment.id)}
+                          className="mr-2"
+                          disabled={payment.student_paid}
+                        />
+                        <span className={payment.student_paid ? 'text-green-600' : 'text-red-600'}>
+                          Student Paid ${payment.amount}
+                          {payment.student_paid && ' ✅'}
+                        </span>
+                      </label>
+                      
+                      {/* Tutor Payout */}
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={payment.tutor_paid}
+                          onChange={() => handleTutorPayout(payment.id)}
+                          className="mr-2"
+                          disabled={payment.tutor_paid || !payment.student_paid}
+                        />
+                        <span className={payment.tutor_paid ? 'text-green-600' : 'text-yellow-600'}>
+                          Tutor Paid ${payment.amount / 2}
+                          {payment.tutor_paid && ' ✅'}
+                        </span>
+                      </label>
+                      
+                      {!payment.student_paid && (
+                        <p className="text-xs text-gray-500">Waiting for student payment</p>
+                      )}
+                      {payment.student_paid && !payment.tutor_paid && (
+                        <p className="text-xs text-yellow-600">Ready for tutor payout</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Payment Instructions */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="font-medium text-blue-800 mb-2">Payment Process</h3>
+        <div className="text-sm text-blue-700 space-y-1">
+          <p>1. Students send e-transfer payments directly to you</p>
+          <p>2. Mark "Student Paid" when you receive their payment</p>
+          <p>3. Send e-transfer to tutor using their email above</p>
+          <p>4. Mark "Tutor Paid" when you've sent their payout</p>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8" aria-label="Tabs">
+      {/* Navigation Tabs */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8 px-6">
             <button
               onClick={() => setActiveTab('overview')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
@@ -775,34 +785,19 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
               )}
             </button>
             <button
-              onClick={() => setActiveTab('students')}
+              onClick={() => setActiveTab('payments')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'students'
+                activeTab === 'payments'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              📚 Students
-            </button>
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'users'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              👥 All Users
-            </button>
-            <button
-              onClick={() => setActiveTab('sessions')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'sessions'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              📝 Sessions
+              💰 Payment Management
+              {stats && (stats.unpaidStudentAmount > 0 || stats.unpaidTutorAmount > 0) && (
+                <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                  !
+                </span>
+              )}
             </button>
           </nav>
         </div>
@@ -811,9 +806,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       {/* Content */}
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'tutors' && renderTutorManagement()}
-      {activeTab === 'students' && renderStudentsList()}
-      {activeTab === 'users' && renderUsersList()}
-      {activeTab === 'sessions' && renderSessionsList()}
+      {activeTab === 'payments' && renderPaymentManagement()}
     </div>
   )
 }

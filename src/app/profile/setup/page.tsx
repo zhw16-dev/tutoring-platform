@@ -33,6 +33,7 @@ export default function ProfileSetup() {
     subjects: {} as { [subject: string]: string[] }, // subject -> grades array
     bio: '',
     calendar_link: '',
+    etransfer_email: '',
     is_active: false // Default to inactive until admin approval
   })
 
@@ -128,6 +129,7 @@ export default function ProfileSetup() {
             pricing: pricing,
             bio: formData.bio,
             calendar_link: formData.calendar_link,
+            etransfer_email: formData.etransfer_email,
             is_active: false // Always require admin approval
           })
           .eq('id', existingProfile.id)
@@ -143,6 +145,7 @@ export default function ProfileSetup() {
             pricing: pricing,
             bio: formData.bio,
             calendar_link: formData.calendar_link,
+            etransfer_email: formData.etransfer_email,
             is_active: false // Always require admin approval
           })
 
@@ -273,6 +276,29 @@ export default function ProfileSetup() {
                 </p>
               </div>
 
+              {/* E-transfer Email Section */}
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Payment Information *
+                </h2>
+                <input
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={formData.etransfer_email}
+                  onChange={(e) => setFormData({ ...formData, etransfer_email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+                <div className="text-sm text-gray-500 mt-2">
+                  <p className="mb-1">
+                    <strong>Required:</strong> Email address for e-transfer payments
+                  </p>
+                  <p className="text-blue-600">
+                    🔒 Only visible to admin for payment processing
+                  </p>
+                </div>
+              </div>
+
               {/* Calendar Link */}
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -318,7 +344,7 @@ export default function ProfileSetup() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || getSelectedSubjectsCount() === 0 || !formData.bio || !formData.calendar_link}
+                  disabled={loading || getSelectedSubjectsCount() === 0 || !formData.bio || !formData.calendar_link || !formData.etransfer_email}
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Submitting...' : 'Submit for Approval'}
