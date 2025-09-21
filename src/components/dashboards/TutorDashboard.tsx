@@ -276,6 +276,30 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
           </div>
         </div>
 
+        {/* Contact Support Section */}
+        <div className="bg-cream rounded-lg shadow-soft border border-sage-green-light">
+          <div className="p-6 border-b border-sage-green-light">
+            <h3 className="text-lg font-medium text-forest-green">Need Help?</h3>
+          </div>
+          <div className="p-6">
+            <div className="flex items-center space-x-4">
+              <div className="p-2 bg-sage-green-light rounded-md">📞</div>
+              <div>
+                <h4 className="font-medium text-forest-green mb-1">Contact Support</h4>
+                <p className="text-forest-green text-sm mb-2">Have questions about your application or need assistance?</p>
+                <div className="space-y-1 text-sm">
+                  <p className="text-forest-green">
+                    📧 Email: <a href="mailto:wzhai0516@gmail.com" className="text-sage-green hover:text-forest-green font-medium">wzhai0516@gmail.com</a>
+                  </p>
+                  <p className="text-forest-green">
+                    📱 Phone: <a href="tel:4377751220" className="text-sage-green hover:text-forest-green font-medium">437 775 1220</a>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Next Steps */}
         <div className="bg-sage-green-light border border-sage-green rounded-lg p-6">
           <h3 className="font-medium text-forest-green mb-3">While You Wait</h3>
@@ -485,6 +509,30 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
           </div>
         </div>
       </div>
+
+      {/* Contact Support Section */}
+            <div className="bg-cream rounded-lg shadow-soft border border-sage-green-light">
+              <div className="p-6 border-b border-sage-green-light">
+                <h3 className="text-lg font-medium text-forest-green">Need Help?</h3>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="p-2 bg-sage-green-light rounded-md">📞</div>
+                  <div>
+                    <h4 className="font-medium text-forest-green mb-1">Contact Support</h4>
+                    <p className="text-forest-green text-sm mb-2">Have questions or need assistance? We're here to help!</p>
+                    <div className="space-y-1 text-sm">
+                      <p className="text-forest-green">
+                        📧 Email: <a href="mailto:wzhai0516@gmail.com" className="text-sage-green hover:text-forest-green font-medium">wzhai0516@gmail.com</a>
+                      </p>
+                      <p className="text-forest-green">
+                        📱 Phone: <a href="tel:4377751220" className="text-sage-green hover:text-forest-green font-medium">437 775 1220</a>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
       {/* Getting Started */}
       <div className="bg-sage-green-light border border-sage-green rounded-lg p-6">
