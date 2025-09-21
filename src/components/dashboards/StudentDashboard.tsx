@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { User } from '@/types/database'
 import Link from 'next/link'
+import StudentProfileEdit from '@/components/StudentProfileEdit'
 
 interface StudentDashboardProps {
   user: User
@@ -17,6 +18,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'sessions'>('overview')
   const [loginCount, setLoginCount] = useState(0)
+  const [showProfileEdit, setShowProfileEdit] = useState(false)
 
   useEffect(() => {
     fetchStudentProfile()
@@ -72,6 +74,13 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
     } catch (error) {
       console.error('Unexpected error:', error)
     }
+  }
+
+
+  const handleProfileUpdated = () => {
+  setShowProfileEdit(false)
+  // Optionally refresh any profile-dependent data
+  fetchStudentProfile()
   }
 
   const fetchSessions = async () => {
@@ -158,6 +167,15 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
           <div className="text-2xl mb-2">📚</div>
           <h3 className="font-semibold mb-1">View My Sessions</h3>
           <p className="text-forest-green opacity-80 text-sm">See your session history and upcoming bookings</p>
+        </button>
+
+        <button
+          onClick={() => setShowProfileEdit(true)}
+          className="bg-forest-green text-cream p-6 rounded-lg hover:bg-sage-green transition-colors text-center shadow-soft"
+        >
+          <div className="text-2xl mb-2">⚙️</div>
+          <h3 className="font-semibold mb-1">Edit Profile</h3>
+          <p className="text-sage-green-light text-sm">Update your grade level and contact information</p>
         </button>
       </div>
 
@@ -552,6 +570,16 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
       {/* Content */}
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'sessions' && renderSessions()}
+
+      {/* Profile Edit Modal */}
+      {showProfileEdit && (
+        <StudentProfileEdit
+          user={user}
+          onProfileUpdated={handleProfileUpdated}
+          onCancel={() => setShowProfileEdit(false)}
+        />
+      )}
+      
     </div>
   )
 }
