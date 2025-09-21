@@ -16,7 +16,6 @@ export interface TutorProfile {
   }
   bio?: string
   calendar_link?: string
-  etransfer_email?: string
   is_active: boolean
   created_at: string
   user?: User // For when we join with users table
@@ -56,9 +55,34 @@ export interface Payment {
   amount: number
   student_paid: boolean
   tutor_paid: boolean
-  student_payment_date?: string
-  tutor_payout_date?: string
-  admin_notes?: string
   payment_date?: string
   created_at: string
+}
+
+// Extended interfaces for complex queries
+export interface PaymentWithSession extends Payment {
+  session: {
+    id: string
+    scheduled_at: string
+    subject: string
+    student: {
+      user: {
+        name: string
+        email: string
+      }
+    }
+    tutor: {
+      user: {
+        name: string
+        email: string
+      }
+    }
+  }
+}
+
+export interface UserWithProfile extends User {
+  tutor_profile?: {
+    subjects: string[]
+    is_active: boolean
+  }
 }

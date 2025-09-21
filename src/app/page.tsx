@@ -17,20 +17,20 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>Loading...</div>
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <div className="animate-pulse-sage text-forest-green">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-cream to-sage-green-light flex items-center justify-center">
       <div className="max-w-md w-full space-y-8 p-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Tutoring Platform
+          <h1 className="text-4xl font-bold text-forest-green mb-2 font-serif">
+            Will's Tutoring
           </h1>
-          <p className="text-gray-600 mb-8">
+          <p className="text-forest-green mb-8 font-sans">
             Connect students with qualified tutors
           </p>
         </div>
@@ -38,22 +38,29 @@ export default function Home() {
         <div className="space-y-4">
           <Link
             href="/register"
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-soft text-sm font-medium text-cream bg-sage-green hover:bg-forest-green focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sage-green transition-colors"
           >
             Get Started
           </Link>
           
           <Link
             href="/login"
-            className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="w-full flex justify-center py-3 px-4 border border-sage-green-light rounded-md shadow-soft text-sm font-medium text-forest-green bg-cream hover:bg-sage-green-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sage-green transition-colors"
           >
             Sign In
           </Link>
         </div>
 
-        <div className="text-center text-sm text-gray-500">
-          <p>Students: Find and book sessions with tutors</p>
-          <p>Tutors: Manage your availability and students</p>
+        <div className="text-center text-sm text-forest-green opacity-80 space-y-2">
+          <p><strong>Students:</strong> Find and book sessions with tutors</p>
+          <p><strong>Tutors:</strong> Manage your availability and students</p>
+        </div>
+
+        {/* Decorative illustration elements */}
+        <div className="text-center text-4xl opacity-60 space-x-4">
+          <span>📚</span>
+          <span>🎓</span>
+          <span>✏️</span>
         </div>
       </div>
     </div>

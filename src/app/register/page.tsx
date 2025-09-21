@@ -55,7 +55,6 @@ export default function Register() {
       // Handle role-specific setup
       if (formData.role === 'tutor') {
         // Tutors will complete their profile later via /profile/setup
-        // Don't create an empty tutor profile automatically
         setMessage('Registration successful! Please check your email to verify your account, then complete your tutor profile setup.')
       } else {
         // If student, create student profile
@@ -78,104 +77,144 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-cream to-sage-green-light flex items-center justify-center py-12">
+      <div className="max-w-md w-full space-y-8 p-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-forest-green mb-2 font-serif">
+            Will's Tutoring
+          </h1>
+          <h2 className="text-xl font-semibold text-forest-green font-serif">
             Create your account
           </h2>
+          <p className="mt-2 text-forest-green opacity-80">
+            Join our community of learners and educators
+          </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <input
-                type="text"
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Full Name"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-              />
-            </div>
-            <div>
-              <input
-                type="email"
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Email address"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-              />
-            </div>
-            <div>
-              <input
-                type="tel"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Phone number (optional)"
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-              />
-            </div>
-            <div>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value as 'student' | 'tutor'})}
-              >
-                <option value="student">I'm a Student</option>
-                <option value="tutor">I'm a Tutor</option>
-              </select>
-            </div>
-            <div>
-              <input
-                type="password"
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Password"
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-              />
-            </div>
-          </div>
 
-          {/* Tutor Notice */}
-          {formData.role === 'tutor' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <div className="text-blue-400 text-xl mr-3">ℹ️</div>
-                <div>
-                  <h3 className="text-blue-800 font-medium">Tutor Application Process</h3>
-                  <p className="text-blue-700 text-sm mt-1">
-                    After registration, you'll need to complete your tutor profile with subjects, grades, bio, and calendar link. 
-                    All tutor profiles require admin approval before becoming active.
-                  </p>
-                </div>
+        <div className="card p-8">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-forest-green mb-2">
+                  Full Name
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
+                  placeholder="Enter your full name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-forest-green mb-2">
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
+                  placeholder="Enter your email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                />
+              </div>
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-forest-green mb-2">
+                  Phone number <span className="text-forest-green opacity-60">(optional)</span>
+                </label>
+                <input
+                  id="phone"
+                  type="tel"
+                  className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
+                  placeholder="Enter your phone number"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                />
+              </div>
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-forest-green mb-2">
+                  I am a...
+                </label>
+                <select
+                  id="role"
+                  className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
+                  value={formData.role}
+                  onChange={(e) => setFormData({...formData, role: e.target.value as 'student' | 'tutor'})}
+                >
+                  <option value="student">Student</option>
+                  <option value="tutor">Tutor</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-forest-green mb-2">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
+                  placeholder="Create a secure password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                />
               </div>
             </div>
-          )}
 
-          {message && (
-            <div className={`text-sm text-center ${message.includes('successful') ? 'text-green-600' : 'text-red-600'}`}>
-              {message}
+            {/* Tutor Notice */}
+            {formData.role === 'tutor' && (
+              <div className="bg-sage-green-light border border-sage-green rounded-lg p-4">
+                <div className="flex items-start">
+                  <div className="text-sage-green text-xl mr-3">ℹ️</div>
+                  <div>
+                    <h3 className="text-forest-green font-medium">Tutor Application Process</h3>
+                    <p className="text-forest-green text-sm mt-1">
+                      After registration, you'll need to complete your tutor profile with subjects, grades, bio, and calendar link. 
+                      All tutor profiles require admin approval before becoming active.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {message && (
+              <div className={`p-3 rounded-md border ${
+                message.includes('successful') 
+                  ? 'bg-sage-green-light border-sage-green text-forest-green' 
+                  : 'bg-red-50 border-red-200 text-red-600'
+              }`}>
+                <div className="text-sm text-center">{message}</div>
+              </div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Creating account...' : 'Create account'}
+              </button>
             </div>
-          )}
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {loading ? 'Creating account...' : 'Create account'}
-            </button>
-          </div>
+            <div className="text-center">
+              <Link href="/login" className="text-sage-green hover:text-forest-green font-medium transition-colors">
+                Already have an account? Sign in
+              </Link>
+            </div>
+          </form>
+        </div>
 
-          <div className="text-center">
-            <Link href="/login" className="text-blue-600 hover:text-blue-500">
-              Already have an account? Sign in
-            </Link>
-          </div>
-        </form>
+        {/* Decorative elements */}
+        <div className="text-center text-3xl opacity-40 space-x-4">
+          <span>🌱</span>
+          <span>📚</span>
+          <span>🎓</span>
+        </div>
       </div>
     </div>
   )

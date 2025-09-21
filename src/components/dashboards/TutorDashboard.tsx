@@ -6,12 +6,6 @@ import { User, TutorProfile } from '@/types/database'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 
-const APPROVED_SUBJECTS = [
-  'Mathematics', 'English', 'French', 'Computer Science',
-  'Biology', 'Chemistry', 'Physics', 'Economics',
-  'SAT Prep', 'ACT Prep', 'University Admissions'
-]
-
 interface TutorDashboardProps {
   user: User
 }
@@ -22,9 +16,15 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
   const [loading, setLoading] = useState(true)
   const [showLogForm, setShowLogForm] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'sessions'>('overview')
+  const [loginCount, setLoginCount] = useState(0)
 
   useEffect(() => {
     fetchTutorProfile()
+    // Get login count from localStorage
+    const count = parseInt(localStorage.getItem(`loginCount_${user.id}`) || '0')
+    setLoginCount(count)
+    // Increment login count
+    localStorage.setItem(`loginCount_${user.id}`, (count + 1).toString())
   }, [user.id])
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
           student:students(
             user:users(name, email)
           ),
-          payment:payments(id, student_paid, tutor_paid, amount)
+          payment:payments(id, student_paid, tutor_paid)
         `)
         .eq('tutor_id', profile.id)
         .order('scheduled_at', { ascending: false })
@@ -85,7 +85,7 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
   const unpaidEarnings = totalEarnings - paidEarnings
 
   if (loading) {
-    return <div className="p-6">Loading your dashboard...</div>
+    return <div className="p-6 text-forest-green">Loading your dashboard...</div>
   }
 
   // No profile exists - needs setup
@@ -93,15 +93,15 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
     return (
       <div className="text-center py-12">
         <div className="text-6xl mb-4">🎓</div>
-        <h2 className="text-xl font-medium text-gray-900 mb-4">
+        <h2 className="text-xl font-medium text-forest-green mb-4">
           Complete Your Tutor Profile
         </h2>
-        <p className="text-gray-600 mb-6">
+        <p className="text-forest-green opacity-80 mb-6">
           Set up your subjects, pricing, and bio to start your application process.
         </p>
         <Link
           href="/profile/setup"
-          className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
+          className="bg-sage-green text-cream px-6 py-2 rounded-md hover:bg-forest-green transition-colors"
         >
           Set Up Profile
         </Link>
@@ -114,32 +114,32 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
     return (
       <div className="space-y-6">
         {/* Pending Approval Status */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+        <div className="bg-golden-yellow-light border border-golden-yellow rounded-lg p-6">
           <div className="text-center">
             <div className="text-6xl mb-4">⏳</div>
-            <h2 className="text-xl font-medium text-yellow-800 mb-2">
+            <h2 className="text-xl font-medium text-forest-green mb-2">
               Profile Submitted for Review
             </h2>
-            <p className="text-yellow-700 mb-6">
+            <p className="text-forest-green mb-6">
               Your tutor profile has been submitted and is currently under review by our admin team. 
               You'll receive an email notification once your profile is approved and activated.
             </p>
-            <div className="bg-white rounded-lg p-4 mb-6">
-              <h3 className="font-medium text-gray-900 mb-2">Review typically takes:</h3>
-              <p className="text-gray-600 text-sm">• 24-48 hours during business days</p>
-              <p className="text-gray-600 text-sm">• We may contact you if additional information is needed</p>
+            <div className="bg-cream rounded-lg p-4 mb-6 border border-sage-green-light">
+              <h3 className="font-medium text-forest-green mb-2">Review typically takes:</h3>
+              <p className="text-forest-green text-sm">• 24-48 hours during business days</p>
+              <p className="text-forest-green text-sm">• We may contact you if additional information is needed</p>
             </div>
           </div>
         </div>
 
         {/* Profile Summary */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
+        <div className="bg-cream rounded-lg shadow-soft border border-sage-green-light">
+          <div className="p-6 border-b border-sage-green-light">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">Your Submitted Profile</h3>
+              <h3 className="text-lg font-medium text-forest-green">Your Submitted Profile</h3>
               <Link
                 href="/profile/edit"
-                className="text-blue-600 hover:text-blue-800 text-sm"
+                className="text-sage-green hover:text-forest-green text-sm font-medium"
               >
                 Edit Profile
               </Link>
@@ -148,34 +148,34 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h4 className="font-medium text-gray-900 mb-2">Teaching Subjects</h4>
+                <h4 className="font-medium text-forest-green mb-2">Teaching Subjects</h4>
                 {profile.subjects && profile.subjects.length > 0 ? (
                   <div className="space-y-1">
                     {profile.subjects.map((subject, index) => (
-                      <div key={index} className="text-gray-700 text-sm">
+                      <div key={index} className="text-forest-green text-sm">
                         {subject}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm">No subjects set</p>
+                  <p className="text-forest-green opacity-60 text-sm">No subjects set</p>
                 )}
               </div>
 
               <div>
-                <h4 className="font-medium text-gray-900 mb-2">Bio</h4>
-                <p className="text-gray-600 text-sm">
+                <h4 className="font-medium text-forest-green mb-2">Bio</h4>
+                <p className="text-forest-green text-sm">
                   {profile.bio || 'No bio provided'}
                 </p>
                 
                 {profile.calendar_link && (
                   <div className="mt-4">
-                    <h4 className="font-medium text-gray-900 mb-1">Calendar Link</h4>
+                    <h4 className="font-medium text-forest-green mb-1">Calendar Link</h4>
                     <a 
                       href={profile.calendar_link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-sm"
+                      className="text-sage-green hover:text-forest-green text-sm"
                     >
                       View Calendar →
                     </a>
@@ -187,9 +187,9 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
         </div>
 
         {/* Next Steps */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="font-medium text-blue-800 mb-3">While You Wait</h3>
-          <div className="space-y-2 text-blue-700 text-sm">
+        <div className="bg-sage-green-light border border-sage-green rounded-lg p-6">
+          <h3 className="font-medium text-forest-green mb-3">While You Wait</h3>
+          <div className="space-y-2 text-forest-green text-sm">
             <p>• ✅ Ensure your calendar link is working and updated</p>
             <p>• ✅ Prepare teaching materials for your subjects</p>
             <p>• ✅ Review our tutoring guidelines (coming soon)</p>
@@ -203,121 +203,81 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
   // Profile is approved and active
   const renderOverview = () => (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-        <div className="flex items-center">
-          <div className="text-green-400 text-4xl mr-4">🎉</div>
-          <div>
-            <h2 className="text-xl font-bold text-green-800 mb-1">
-              Welcome to the team, {user.name}!
-            </h2>
-            <p className="text-green-700">
-              Your tutor profile is active and students can now book sessions with you.
-            </p>
+      {/* Welcome Section - Only show for first 5 logins */}
+      {loginCount <= 5 && (
+        <div className="bg-sage-green-light border border-sage-green rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="text-sage-green text-4xl mr-4">🎉</div>
+            <div>
+              <h2 className="text-xl font-bold text-forest-green mb-1">
+                Welcome to the team, {user.name}!
+              </h2>
+              <p className="text-forest-green">
+                Your tutor profile is active and students can now book sessions with you.
+              </p>
+            </div>
           </div>
-          <Link
-            href="/profile/edit"
-            className="ml-auto bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700"
-          >
-            Edit Profile
-          </Link>
         </div>
-      </div>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-cream rounded-lg shadow-soft p-6 border border-sage-green-light">
           <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-md">💰</div>
+            <div className="p-2 bg-sage-green-light rounded-md">💰</div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-green-600">Total Earnings</p>
-              <p className="text-2xl font-bold text-green-900">${totalEarnings}</p>
+              <p className="text-sm font-medium text-sage-green">Total Earnings</p>
+              <p className="text-2xl font-bold text-forest-green">${totalEarnings}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-cream rounded-lg shadow-soft p-6 border border-sage-green-light">
           <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-md">📅</div>
+            <div className="p-2 bg-sage-green-light rounded-md">📅</div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-blue-600">Total Sessions</p>
-              <p className="text-2xl font-bold text-blue-900">{sessions.length}</p>
+              <p className="text-sm font-medium text-sage-green">Total Sessions</p>
+              <p className="text-2xl font-bold text-forest-green">{sessions.length}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-cream rounded-lg shadow-soft p-6 border border-sage-green-light">
           <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-md">✅</div>
+            <div className="p-2 bg-golden-yellow-light rounded-md">✅</div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-purple-600">Completed</p>
-              <p className="text-2xl font-bold text-purple-900">{completedSessions.length}</p>
+              <p className="text-sm font-medium text-forest-green">Completed</p>
+              <p className="text-2xl font-bold text-forest-green">{completedSessions.length}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-cream rounded-lg shadow-soft p-6 border border-sage-green-light">
           <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-md">⏳</div>
+            <div className="p-2 bg-golden-yellow-light rounded-md">⏳</div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-yellow-600">Pending Payout</p>
-              <p className="text-2xl font-bold text-yellow-900">${unpaidEarnings}</p>
+              <p className="text-sm font-medium text-forest-green">Pending Payout</p>
+              <p className="text-2xl font-bold text-forest-green">${unpaidEarnings}</p>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Payment Information */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Payment Information</h3>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">${totalEarnings}</p>
-              <p className="text-sm text-gray-600">Total Earned</p>
-            </div>
-            
-            <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-600">${unpaidEarnings}</p>
-              <p className="text-sm text-gray-600">Pending Payout</p>
-            </div>
-            
-            <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">${paidEarnings}</p>
-              <p className="text-sm text-gray-600">Paid Out</p>
-            </div>
-          </div>
-          
-          {/* E-transfer Email Display */}
-          <div className="mt-6 bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-medium text-blue-800">Payment Details</h4>
-            <p className="text-sm text-blue-700 mt-1">
-              E-transfer Email: <span className="font-mono">{profile.etransfer_email || 'Not set - please update your profile'}</span>
-            </p>
-            <p className="text-xs text-blue-600 mt-2">
-              Payouts are sent via e-transfer after admin approval of completed sessions
-            </p>
           </div>
         </div>
       </div>
 
       {/* Recent Sessions */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-cream rounded-lg shadow-soft border border-sage-green-light">
+        <div className="p-6 border-b border-sage-green-light">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium text-gray-900">Recent Sessions</h3>
+            <h3 className="text-lg font-medium text-forest-green">Recent Sessions</h3>
             <div className="flex space-x-3">
               <button
                 onClick={() => setActiveTab('sessions')}
-                className="text-blue-600 hover:text-blue-800 text-sm"
+                className="text-sage-green hover:text-forest-green text-sm font-medium"
               >
                 View All →
               </button>
               <button
                 onClick={() => setShowLogForm(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+                className="bg-sage-green text-cream px-4 py-2 rounded-md hover:bg-forest-green text-sm transition-colors"
               >
                 Log New Session
               </button>
@@ -327,14 +287,14 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
         
         {sessions.length === 0 ? (
           <div className="p-8 text-center">
-            <div className="text-gray-400 text-4xl mb-4">📚</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No sessions logged yet</h3>
-            <p className="text-gray-600 mb-4">
+            <div className="text-sage-green text-4xl mb-4">📚</div>
+            <h3 className="text-lg font-medium text-forest-green mb-2">No sessions logged yet</h3>
+            <p className="text-forest-green opacity-80 mb-4">
               Start by logging your first tutoring session.
             </p>
             <button
               onClick={() => setShowLogForm(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              className="bg-sage-green text-cream px-4 py-2 rounded-md hover:bg-forest-green transition-colors"
             >
               Log Your First Session
             </button>
@@ -343,37 +303,29 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
           <div className="p-6">
             <div className="space-y-4">
               {sessions.slice(0, 3).map((session) => (
-                <div key={session.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={session.id} className="border border-sage-green-light rounded-lg p-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="font-medium text-gray-900">
+                      <h4 className="font-medium text-forest-green">
                         {session.student?.user?.name || session.student_notes?.replace('Student name: ', '') || 'Unknown Student'}
                       </h4>
-                      <p className="text-sm text-gray-600">{session.subject}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-forest-green opacity-80">{session.subject}</p>
+                      <p className="text-sm text-forest-green opacity-60">
                         {new Date(session.scheduled_at).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="text-right">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        session.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        session.status === 'completed' ? 'bg-sage-green text-cream' :
                         session.status === 'no_show' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {session.status === 'no_show' ? 'No Show' : 
                          session.status.charAt(0).toUpperCase() + session.status.slice(1)}
                       </span>
-                      <p className="text-sm font-medium mt-1">
+                      <p className="text-sm font-medium mt-1 text-forest-green">
                         Your earnings: ${session.status === 'completed' ? '25' : '0'}
                       </p>
-                      {session.status === 'completed' && (
-                        <p className="text-xs mt-1">
-                          {session.payment?.[0]?.tutor_paid ? 
-                            <span className="text-green-600">✅ Paid Out</span> : 
-                            <span className="text-yellow-600">⏳ Pending</span>
-                          }
-                        </p>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -383,42 +335,50 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
         )}
       </div>
 
-      {/* Profile Summary */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Your Active Profile</h3>
+      {/* Profile Summary with Edit Button */}
+      <div className="bg-cream rounded-lg shadow-soft border border-sage-green-light">
+        <div className="p-6 border-b border-sage-green-light">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium text-forest-green">Your Active Profile</h3>
+            <Link
+              href="/profile/edit"
+              className="bg-sage-green text-cream px-4 py-2 rounded-md text-sm hover:bg-forest-green transition-colors"
+            >
+              Edit Profile
+            </Link>
+          </div>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h4 className="font-medium text-gray-900 mb-2">Teaching Subjects</h4>
+              <h4 className="font-medium text-forest-green mb-2">Teaching Subjects</h4>
               {profile.subjects && profile.subjects.length > 0 ? (
                 <div className="space-y-1">
                   {profile.subjects.map((subject, index) => (
-                    <div key={index} className="text-gray-700 text-sm">
+                    <div key={index} className="text-forest-green text-sm">
                       {subject}
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm">No subjects set</p>
+                <p className="text-forest-green opacity-60 text-sm">No subjects set</p>
               )}
             </div>
 
             <div>
-              <h4 className="font-medium text-gray-900 mb-2">Bio</h4>
-              <p className="text-gray-600 text-sm mb-4">
+              <h4 className="font-medium text-forest-green mb-2">Bio</h4>
+              <p className="text-forest-green text-sm mb-4">
                 {profile.bio || 'No bio provided'}
               </p>
               
               {profile.calendar_link && (
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Calendar</h4>
+                  <h4 className="font-medium text-forest-green mb-1">Calendar</h4>
                   <a 
                     href={profile.calendar_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 text-sm"
+                    className="text-sage-green hover:text-forest-green text-sm"
                   >
                     View Booking Calendar →
                   </a>
@@ -430,13 +390,13 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
       </div>
 
       {/* Getting Started */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="font-medium text-blue-800 mb-3">Ready to Start Teaching!</h3>
-        <div className="space-y-2 text-blue-700 text-sm">
+      <div className="bg-sage-green-light border border-sage-green rounded-lg p-6">
+        <h3 className="font-medium text-forest-green mb-3">Ready to Start Teaching!</h3>
+        <div className="space-y-2 text-forest-green text-sm">
           <p>• Students can now find you in the tutor directory</p>
           <p>• Remember to log sessions after each tutoring appointment</p>
           <p>• Track your earnings and completed sessions in the Sessions tab</p>
-          <p>• Monthly payouts are processed by admin via e-transfer</p>
+          <p>• Monthly payouts are processed by admin</p>
         </div>
       </div>
     </div>
@@ -446,10 +406,10 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
     <div className="space-y-6">
       {/* Header with Log Session Button */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">My Sessions</h2>
+        <h2 className="text-2xl font-bold text-forest-green">My Sessions</h2>
         <button
           onClick={() => setShowLogForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          className="bg-sage-green text-cream px-4 py-2 rounded-md hover:bg-forest-green transition-colors"
         >
           Log New Session
         </button>
@@ -457,56 +417,56 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
 
       {/* Earnings Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-green-900">{completedSessions.length}</div>
-          <div className="text-green-700 text-sm">Completed Sessions</div>
+        <div className="bg-sage-green-light rounded-lg p-4">
+          <div className="text-2xl font-bold text-forest-green">{completedSessions.length}</div>
+          <div className="text-forest-green text-sm">Completed Sessions</div>
         </div>
-        <div className="bg-blue-50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-blue-900">${totalEarnings}</div>
-          <div className="text-blue-700 text-sm">Total Earnings</div>
+        <div className="bg-sage-green-light rounded-lg p-4">
+          <div className="text-2xl font-bold text-forest-green">${totalEarnings}</div>
+          <div className="text-forest-green text-sm">Total Earnings</div>
         </div>
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-green-900">${paidEarnings}</div>
-          <div className="text-green-700 text-sm">Paid Out</div>
+        <div className="bg-sage-green-light rounded-lg p-4">
+          <div className="text-2xl font-bold text-forest-green">${paidEarnings}</div>
+          <div className="text-forest-green text-sm">Paid Out</div>
         </div>
-        <div className="bg-yellow-50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-yellow-900">${unpaidEarnings}</div>
-          <div className="text-yellow-700 text-sm">Pending Payout</div>
+        <div className="bg-golden-yellow-light rounded-lg p-4">
+          <div className="text-2xl font-bold text-forest-green">${unpaidEarnings}</div>
+          <div className="text-forest-green text-sm">Pending Payout</div>
         </div>
       </div>
 
       {/* Sessions List */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Session History</h3>
+      <div className="bg-cream rounded-lg shadow-soft border border-sage-green-light">
+        <div className="p-6 border-b border-sage-green-light">
+          <h3 className="text-lg font-medium text-forest-green">Session History</h3>
         </div>
         
         {sessions.length === 0 ? (
           <div className="p-8 text-center">
-            <div className="text-gray-400 text-4xl mb-4">📚</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No sessions logged yet</h3>
-            <p className="text-gray-600 mb-4">
+            <div className="text-sage-green text-4xl mb-4">📚</div>
+            <h3 className="text-lg font-medium text-forest-green mb-2">No sessions logged yet</h3>
+            <p className="text-forest-green opacity-80 mb-4">
               Start by logging your first tutoring session.
             </p>
             <button
               onClick={() => setShowLogForm(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              className="bg-sage-green text-cream px-4 py-2 rounded-md hover:bg-forest-green transition-colors"
             >
               Log Your First Session
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-sage-green-light">
             {sessions.map((session) => (
               <div key={session.id} className="p-6">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="text-lg font-medium text-gray-900">
+                      <h4 className="text-lg font-medium text-forest-green">
                         {session.student?.user?.name || session.student_notes?.replace('Student name: ', '') || 'Unknown Student'}
                       </h4>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        session.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        session.status === 'completed' ? 'bg-sage-green text-cream' :
                         session.status === 'no_show' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
@@ -515,7 +475,7 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
                       </span>
                     </div>
                     
-                    <div className="text-sm text-gray-600 space-y-1">
+                    <div className="text-sm text-forest-green opacity-80 space-y-1">
                       <p><strong>Subject:</strong> {session.subject}</p>
                       <p><strong>Date:</strong> {new Date(session.scheduled_at).toLocaleString()}</p>
                       <p><strong>Duration:</strong> {session.duration} minutes</p>
@@ -526,14 +486,14 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
                   </div>
                   
                   <div className="text-right ml-4">
-                    <div className="text-lg font-bold text-gray-900">${session.price}</div>
+                    <div className="text-lg font-bold text-forest-green">${session.price}</div>
                     {session.status === 'completed' && (
                       <div className="text-sm">
-                        <div className={`${session.payment?.[0]?.tutor_paid ? 'text-green-600' : 'text-yellow-600'}`}>
+                        <div className={`${session.payment?.[0]?.tutor_paid ? 'text-sage-green' : 'text-golden-yellow'}`}>
                           Your earnings: $25
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {session.payment?.[0]?.tutor_paid ? '✅ Paid Out' : '⏳ Pending Admin Approval'}
+                        <div className="text-xs text-forest-green opacity-60">
+                          {session.payment?.[0]?.tutor_paid ? '✅ Paid' : '⏳ Pending'}
                         </div>
                       </div>
                     )}
@@ -550,15 +510,15 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
   return (
     <div className="space-y-6">
       {/* Navigation Tabs */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="border-b border-gray-200">
+      <div className="bg-cream rounded-lg shadow-soft border border-sage-green-light">
+        <div className="border-b border-sage-green-light">
           <nav className="-mb-px flex space-x-8 px-6">
             <button
               onClick={() => setActiveTab('overview')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'overview'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-sage-green text-sage-green'
+                  : 'border-transparent text-forest-green opacity-60 hover:text-forest-green hover:border-sage-green-light'
               }`}
             >
               📊 Overview
@@ -567,8 +527,8 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
               onClick={() => setActiveTab('sessions')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'sessions'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-sage-green text-sage-green'
+                  : 'border-transparent text-forest-green opacity-60 hover:text-forest-green hover:border-sage-green-light'
               }`}
             >
               📚 My Sessions
@@ -584,6 +544,7 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
       {/* Log Session Modal */}
       {showLogForm && (
         <LogSessionForm
+          tutorProfile={profile}
           onSessionLogged={handleSessionLogged}
           onCancel={() => setShowLogForm(false)}
         />
@@ -592,15 +553,21 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
   )
 }
 
-// Log Session Form Component (inline for completeness)
-function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => void, onCancel: () => void }) {
+// Log Session Form Component
+function LogSessionForm({ 
+  tutorProfile, 
+  onSessionLogged, 
+  onCancel 
+}: { 
+  tutorProfile: TutorProfile
+  onSessionLogged: () => void
+  onCancel: () => void 
+}) {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [students, setStudents] = useState<any[]>([])
-  const [tutorProfile, setTutorProfile] = useState<any>(null)
   const [formData, setFormData] = useState({
     student_id: '',
-    student_name: '',
     scheduled_at: '',
     duration: 60,
     subject: '',
@@ -610,47 +577,44 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
 
   useEffect(() => {
     fetchStudents()
-    fetchTutorProfile()
     
-    // Set default date/time to now
+    // Set default date/time to now with 15-minute intervals
     const now = new Date()
+    const minutes = now.getMinutes()
+    const roundedMinutes = Math.round(minutes / 15) * 15
+    now.setMinutes(roundedMinutes, 0, 0)
+    
     const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
       .toISOString()
       .slice(0, 16)
     setFormData(prev => ({ ...prev, scheduled_at: localDateTime }))
-  }, [user])
+  }, [])
 
   const fetchStudents = async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('students')
         .select(`
           id,
-          user:users(name, email)
+          user:users!inner(name, email)
         `)
         .order('created_at', { ascending: false })
 
-      setStudents(data || [])
+      if (error) {
+        console.error('Error fetching students:', error)
+      } else {
+        setStudents(data || [])
+      }
     } catch (error) {
-      console.error('Error fetching students:', error)
+      console.error('Unexpected error fetching students:', error)
     }
   }
 
-  const fetchTutorProfile = async () => {
-    if (!user) return
-
-    try {
-      const { data } = await supabase
-        .from('tutor_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single()
-
-      setTutorProfile(data)
-    } catch (error) {
-      console.error('Error fetching tutor profile:', error)
-    }
-  }
+  // Extract subjects from tutor profile
+  const tutorSubjects = tutorProfile?.subjects?.map(subjectString => {
+    const match = subjectString.match(/^(.+) \(/)
+    return match ? match[1].trim() : subjectString
+  }) || []
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -659,25 +623,22 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
     setLoading(true)
 
     try {
-      let studentId = formData.student_id
-
-      if (!studentId && !formData.student_name.trim()) {
-        alert('Please select a student or enter a student name')
+      if (!formData.student_id) {
+        alert('Please select a student')
         setLoading(false)
         return
       }
 
       // Create session record
       const sessionData = {
-        student_id: studentId || null,
+        student_id: formData.student_id,
         tutor_id: tutorProfile.id,
         scheduled_at: formData.scheduled_at,
         duration: formData.duration,
         subject: formData.subject,
         status: formData.status,
         price: 50,
-        notes: studentId ? formData.notes : `New student: ${formData.student_name}. ${formData.notes}`,
-        student_notes: studentId ? null : `Student name: ${formData.student_name}`,
+        notes: formData.notes,
         created_at: new Date().toISOString()
       }
 
@@ -687,11 +648,14 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
         .select()
         .single()
 
-      if (sessionError) throw sessionError
+      if (sessionError) {
+        console.error('Session insert error:', sessionError)
+        throw sessionError
+      }
 
       // Create payment record if session was completed
       if (formData.status === 'completed') {
-        await supabase
+        const { error: paymentError } = await supabase
           .from('payments')
           .insert({
             session_id: session.id,
@@ -700,6 +664,10 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
             tutor_paid: false,
             created_at: new Date().toISOString()
           })
+
+        if (paymentError) {
+          console.error('Payment insert error:', paymentError)
+        }
       }
 
       alert('Session logged successfully!')
@@ -713,24 +681,37 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
     }
   }
 
+  // Generate 15-minute time options
+  const generateTimeOptions = () => {
+    const options = []
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+        options.push(timeString)
+      }
+    }
+    return options
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-cream rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-sage-green-light">
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Log Session</h2>
+          <h2 className="text-xl font-semibold text-forest-green mb-4">Log Session</h2>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Student Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-forest-green mb-2">
                 Student *
               </label>
               <select
                 value={formData.student_id}
-                onChange={(e) => setFormData({ ...formData, student_id: e.target.value, student_name: '' })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
+                className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
+                required
               >
-                <option value="">Select existing student...</option>
+                <option value="">Select student...</option>
                 {students.map((student) => (
                   <option key={student.id} value={student.id}>
                     {student.user?.name || 'Unknown'} ({student.user?.email || 'No email'})
@@ -739,48 +720,36 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
               </select>
               
               {students.length === 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  No students found. You can still enter a new student name below.
+                <p className="text-xs text-forest-green opacity-60 mt-1">
+                  No registered students found.
                 </p>
               )}
-              
-              <div className="mt-2">
-                <input
-                  type="text"
-                  placeholder="Or enter new student name"
-                  value={formData.student_name}
-                  onChange={(e) => setFormData({ ...formData, student_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  New students will need to create an account later
-                </p>
-              </div>
             </div>
 
             {/* Date & Time */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-forest-green mb-2">
                 Session Date & Time *
               </label>
               <input
                 type="datetime-local"
                 value={formData.scheduled_at}
                 onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                step="900" // 15 minutes in seconds
+                className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
                 required
               />
             </div>
 
             {/* Duration */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-forest-green mb-2">
                 Duration (minutes) *
               </label>
               <select
                 value={formData.duration}
                 onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
               >
                 <option value={30}>30 minutes</option>
                 <option value={60}>60 minutes</option>
@@ -789,19 +758,19 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
               </select>
             </div>
 
-            {/* Subject */}
+            {/* Subject - Only show tutor's subjects */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-forest-green mb-2">
                 Subject *
               </label>
               <select
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
                 required
               >
                 <option value="">Select subject...</option>
-                {APPROVED_SUBJECTS.map((subject) => (
+                {tutorSubjects.map((subject) => (
                   <option key={subject} value={subject}>{subject}</option>
                 ))}
               </select>
@@ -809,13 +778,13 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
 
             {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-forest-green mb-2">
                 Session Status *
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
               >
                 <option value="completed">Completed</option>
                 <option value="no_show">Student No-Show</option>
@@ -825,26 +794,16 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-forest-green mb-2">
                 Notes (optional)
               </label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
                 placeholder="Any additional notes about the session..."
               />
-            </div>
-
-            {/* Pricing Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-800">
-                <strong>Rate:</strong> $50/hour • <strong>Your earnings:</strong> $25/hour
-              </p>
-              <p className="text-xs text-blue-600 mt-1">
-                Payment tracking will be handled by admin
-              </p>
             </div>
 
             {/* Action Buttons */}
@@ -852,7 +811,7 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
               <button
                 type="button"
                 onClick={onCancel}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-sage-green-light text-forest-green rounded-md hover:bg-sage-green-light transition-colors"
                 disabled={loading}
               >
                 Cancel
@@ -860,7 +819,7 @@ function LogSessionForm({ onSessionLogged, onCancel }: { onSessionLogged: () => 
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 bg-sage-green text-cream py-2 px-4 rounded-md hover:bg-forest-green disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Logging...' : 'Log Session'}
               </button>

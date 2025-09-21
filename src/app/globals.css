@@ -1,26 +1,315 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #FFFDF5; /* warm cream */
+  --foreground: #2E4C3C; /* forest green */
+  --sage-green: #A8C6A2;
+  --sage-green-light: #D4E7D1;
+  --forest-green: #2E4C3C;
+  --golden-yellow: #F5E6A3;
+  --golden-yellow-light: #FAF0D1;
+  --golden-yellow-dark: #E6D280;
+  --cream: #FFFDF5;
+  --font-serif: 'Lora', serif;
+  --font-sans: 'Inter', sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+/* Headings use serif font for academic feel */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  color: var(--forest-green);
+}
+
+/* Custom utility classes */
+.text-sage-green {
+  color: var(--sage-green);
+}
+
+.text-sage-green-light {
+  color: var(--sage-green-light);
+}
+
+.text-forest-green {
+  color: var(--forest-green);
+}
+
+.text-golden-yellow {
+  color: var(--golden-yellow);
+}
+
+.text-golden-yellow-light {
+  color: var(--golden-yellow-light);
+}
+
+.text-cream {
+  color: var(--cream);
+}
+
+.bg-sage-green {
+  background-color: var(--sage-green);
+}
+
+.bg-sage-green-light {
+  background-color: var(--sage-green-light);
+}
+
+.bg-forest-green {
+  background-color: var(--forest-green);
+}
+
+.bg-golden-yellow {
+  background-color: var(--golden-yellow);
+}
+
+.bg-golden-yellow-light {
+  background-color: var(--golden-yellow-light);
+}
+
+.bg-golden-yellow-dark {
+  background-color: var(--golden-yellow-dark);
+}
+
+.bg-cream {
+  background-color: var(--cream);
+}
+
+.border-sage-green {
+  border-color: var(--sage-green);
+}
+
+.border-sage-green-light {
+  border-color: var(--sage-green-light);
+}
+
+.border-forest-green {
+  border-color: var(--forest-green);
+}
+
+.border-golden-yellow {
+  border-color: var(--golden-yellow);
+}
+
+.border-golden-yellow-light {
+  border-color: var(--golden-yellow-light);
+}
+
+.border-cream {
+  border-color: var(--cream);
+}
+
+/* Hover states */
+.hover\:bg-sage-green:hover {
+  background-color: var(--sage-green);
+}
+
+.hover\:bg-forest-green:hover {
+  background-color: var(--forest-green);
+}
+
+.hover\:bg-golden-yellow-dark:hover {
+  background-color: var(--golden-yellow-dark);
+}
+
+.hover\:text-sage-green:hover {
+  color: var(--sage-green);
+}
+
+.hover\:text-forest-green:hover {
+  color: var(--forest-green);
+}
+
+.hover\:border-sage-green:hover {
+  border-color: var(--sage-green);
+}
+
+.hover\:border-sage-green-light:hover {
+  border-color: var(--sage-green-light);
+}
+
+.focus\:ring-sage-green:focus {
+  --tw-ring-color: var(--sage-green);
+}
+
+.focus\:border-sage-green:focus {
+  border-color: var(--sage-green);
+}
+
+/* Soft shadow for cards */
+.shadow-soft {
+  box-shadow: 0 2px 8px rgba(46, 76, 60, 0.08), 0 1px 3px rgba(46, 76, 60, 0.06);
+}
+
+/* Enhanced shadow for modals */
+.shadow-modal {
+  box-shadow: 0 10px 25px rgba(46, 76, 60, 0.15), 0 4px 6px rgba(46, 76, 60, 0.1);
+}
+
+/* Smooth transitions */
+.transition-colors {
+  transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+/* Custom input focus styles */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--sage-green);
+  box-shadow: 0 0 0 3px rgba(168, 198, 162, 0.1);
+}
+
+/* Button styles */
+.btn-primary {
+  background-color: var(--sage-green);
+  color: var(--cream);
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover {
+  background-color: var(--forest-green);
+}
+
+.btn-secondary {
+  background-color: var(--golden-yellow);
+  color: var(--forest-green);
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-secondary:hover {
+  background-color: var(--golden-yellow-dark);
+}
+
+/* Card styles */
+.card {
+  background-color: var(--cream);
+  border: 1px solid var(--sage-green-light);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(46, 76, 60, 0.08);
+}
+
+/* Typography improvements */
+.text-heading {
+  font-family: var(--font-serif);
+  color: var(--forest-green);
+  font-weight: 600;
+}
+
+.text-body {
+  font-family: var(--font-sans);
+  color: var(--forest-green);
+  line-height: 1.6;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--sage-green-light);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sage-green);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--forest-green);
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  background: rgba(46, 76, 60, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+/* Loading animations */
+@keyframes pulse-sage {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .7;
+  }
+}
+
+.animate-pulse-sage {
+  animation: pulse-sage 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Table styles */
+.table-header {
+  background-color: var(--sage-green-light);
+  color: var(--forest-green);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table-row:hover {
+  background-color: var(--sage-green-light);
+}
+
+/* Status badges */
+.badge-active {
+  background-color: var(--sage-green);
+  color: var(--cream);
+}
+
+.badge-pending {
+  background-color: var(--golden-yellow-light);
+  color: var(--forest-green);
+}
+
+.badge-inactive {
+  background-color: #e5e7eb;
+  color: #6b7280;
+}
+
+/* Custom focus styles for better accessibility */
+.focus-visible\:ring-sage-green:focus-visible {
+  --tw-ring-color: var(--sage-green);
+  --tw-ring-opacity: 0.5;
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Responsive typography */
+@media (max-width: 640px) {
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  h2 {
+    font-size: 1.25rem;
+  }
+  
+  h3 {
+    font-size: 1.125rem;
+  }
 }

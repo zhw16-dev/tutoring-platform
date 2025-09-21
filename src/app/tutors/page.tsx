@@ -76,28 +76,28 @@ export default function TutorsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-cream flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading tutors...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sage-green mx-auto"></div>
+          <p className="mt-4 text-forest-green">Loading tutors...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-cream">
       {/* Header */}
-      <div className="bg-white shadow-sm">
+      <div className="bg-cream shadow-soft border-b border-sage-green-light">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Find Your Perfect Tutor</h1>
-              <p className="text-gray-600">Browse our qualified tutors and book a session • $50/hour</p>
+              <h1 className="text-3xl font-bold text-forest-green font-serif">Find Your Perfect Tutor</h1>
+              <p className="text-forest-green mt-2">Browse our qualified tutors and book a session • $50/hour</p>
             </div>
             <a
               href="/dashboard"
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              className="btn-primary"
             >
               Back to Dashboard
             </a>
@@ -109,19 +109,19 @@ export default function TutorsPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
           <div className="lg:w-1/4">
-            <div className="bg-white rounded-lg shadow p-6 sticky top-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Tutors</h3>
+            <div className="card p-6 sticky top-4">
+              <h3 className="text-lg font-semibold text-forest-green mb-4 font-serif">Filter Tutors</h3>
               
               <div className="space-y-4">
                 {/* Subject Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-forest-green mb-2">
                     Subject
                   </label>
                   <select
                     value={filters.subject}
                     onChange={(e) => setFilters({ subject: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
                   >
                     <option value="">All Subjects</option>
                     {allSubjects.map(subject => (
@@ -133,16 +133,16 @@ export default function TutorsPage() {
                 {/* Clear Filters */}
                 <button
                   onClick={() => setFilters({ subject: '' })}
-                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="w-full px-4 py-2 text-forest-green border border-sage-green-light rounded-md hover:bg-sage-green-light transition-colors"
                 >
                   Clear Filters
                 </button>
               </div>
 
               {/* Pricing Info */}
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Standardized Pricing</h4>
-                <p className="text-sm text-blue-800">All tutoring sessions are $50/hour</p>
+              <div className="mt-6 p-4 bg-sage-green-light rounded-lg border border-sage-green">
+                <h4 className="font-medium text-forest-green mb-2 font-serif">Standardized Pricing</h4>
+                <p className="text-sm text-forest-green">All tutoring sessions are $50/hour</p>
               </div>
             </div>
           </div>
@@ -150,7 +150,7 @@ export default function TutorsPage() {
           {/* Tutors Grid */}
           <div className="lg:w-3/4">
             <div className="mb-6">
-              <p className="text-gray-600">
+              <p className="text-forest-green">
                 Showing {filteredTutors.length} of {tutors.length} tutors
                 {filters.subject && ` for ${filters.subject}`}
               </p>
@@ -158,9 +158,9 @@ export default function TutorsPage() {
 
             {filteredTutors.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-gray-400 text-6xl mb-4">🔍</div>
-                <h3 className="text-xl font-medium text-gray-900 mb-2">No tutors found</h3>
-                <p className="text-gray-600">
+                <div className="text-sage-green text-6xl mb-4">🔍</div>
+                <h3 className="text-xl font-medium text-forest-green mb-2 font-serif">No tutors found</h3>
+                <p className="text-forest-green mb-4">
                   {tutors.length === 0 
                     ? "No tutors have set up their profiles yet. Check back soon!" 
                     : "Try adjusting your filters or browse all tutors"
@@ -169,7 +169,7 @@ export default function TutorsPage() {
                 {filters.subject && (
                   <button
                     onClick={() => setFilters({ subject: '' })}
-                    className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                    className="btn-primary"
                   >
                     Clear Filters
                   </button>
@@ -178,29 +178,29 @@ export default function TutorsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {filteredTutors.map((tutor) => (
-                  <div key={tutor.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                  <div key={tutor.id} className="card overflow-hidden hover:shadow-modal transition-all duration-200">
                     <div className="p-6">
                       {/* Tutor Header */}
                       <div className="flex justify-between items-start mb-4">
                         <div>
-                          <h3 className="text-xl font-semibold text-gray-900">
+                          <h3 className="text-xl font-semibold text-forest-green font-serif">
                             {(tutor as any).user?.name || 'Tutor'}
                           </h3>
-                          <div className="flex items-center mt-1">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <div className="flex items-center mt-2">
+                            <span className="badge-active">
                               Available
                             </span>
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-2xl font-bold text-green-600">$50</span>
-                          <span className="text-gray-500 text-sm">/hour</span>
+                          <span className="text-2xl font-bold text-sage-green">$50</span>
+                          <span className="text-forest-green text-sm opacity-80">/hour</span>
                         </div>
                       </div>
 
                       {/* Bio */}
                       <div className="mb-4">
-                        <p className="text-gray-600 text-sm leading-relaxed">
+                        <p className="text-forest-green text-sm leading-relaxed">
                           {tutor.bio ? 
                             (tutor.bio.length > 150 ? 
                               `${tutor.bio.substring(0, 150)}...` : 
@@ -212,41 +212,27 @@ export default function TutorsPage() {
                       </div>
 
                       {/* Subjects */}
-                      <div className="mb-4">
-                        <h4 className="font-medium text-gray-900 mb-2">Subjects & Grades</h4>
+                      <div className="mb-6">
+                        <h4 className="font-medium text-forest-green mb-2 font-serif">Subjects & Grades</h4>
                         <div className="space-y-1">
                           {(tutor.subjects || []).slice(0, 4).map((subject, index) => (
-                            <div key={index} className="text-gray-700 text-sm">
+                            <div key={index} className="text-forest-green text-sm">
                               {subject}
                             </div>
                           ))}
                           {(tutor.subjects || []).length > 4 && (
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-forest-green opacity-60">
                               +{(tutor.subjects || []).length - 4} more subjects
                             </div>
                           )}
                         </div>
                       </div>
 
-                      {/* Calendar Link */}
-                      {tutor.calendar_link && (
-                        <div className="mb-4">
-                          <a
-                            href={tutor.calendar_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm"
-                          >
-                            📅 View Available Times
-                          </a>
-                        </div>
-                      )}
-
-                      {/* Action Button */}
-                      <div className="flex gap-3">
+                      {/* Action Button - Single unified button */}
+                      <div>
                         <button 
                           onClick={() => handleBookSession(tutor)}
-                          className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+                          className="w-full btn-primary text-center"
                         >
                           Book Session
                         </button>
