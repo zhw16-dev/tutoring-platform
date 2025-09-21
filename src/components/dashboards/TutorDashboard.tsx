@@ -15,8 +15,10 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
   const [sessions, setSessions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showLogForm, setShowLogForm] = useState(false)
+  const [showBatchComplete, setShowBatchComplete] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'sessions'>('overview')
   const [loginCount, setLoginCount] = useState(0)
+  const [editingSession, setEditingSession] = useState<any>(null)
 
   useEffect(() => {
     fetchTutorProfile()
@@ -75,12 +77,100 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
 
   const handleSessionLogged = () => {
     setShowLogForm(false)
+    setEditingSession(null)
     fetchSessions()
   }
 
-  // Calculate earnings
+  const updateSessionStatus = async (sessionId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('sessions')
+        .update({ status: newStatus })
+        .eq('id', sessionId)
+
+      if (error) throw error
+
+      // Create payment record if marking as completed
+      if (newStatus === 'completed') {
+        const { error: paymentError } = await supabase
+          .from('payments')
+          .upsert({
+            session_id: sessionId,
+            amount: 50,
+            student_paid: false,
+            tutor_paid: false,
+            created_at: new Date().toISOString()
+          })
+
+        if (paymentError) {
+          console.error('Payment creation error:', paymentError)
+        }
+      }
+
+      await fetchSessions()
+    } catch (error) {
+      console.error('Error updating session:', error)
+      alert('Error updating session status')
+    }
+  }
+
+  const batchCompleteToday = async () => {
+    if (!profile) return
+
+    try {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+
+      // Get today's scheduled sessions
+      const todaySessions = sessions.filter(session => {
+        const sessionDate = new Date(session.scheduled_at)
+        return sessionDate >= today && 
+               sessionDate < tomorrow && 
+               session.status === 'scheduled'
+      })
+
+      if (todaySessions.length === 0) {
+        alert('No scheduled sessions for today to mark complete.')
+        return
+      }
+
+      // Update all today's scheduled sessions to completed
+      const { error } = await supabase
+        .from('sessions')
+        .update({ status: 'completed' })
+        .in('id', todaySessions.map(s => s.id))
+
+      if (error) throw error
+
+      // Create payment records for completed sessions
+      const paymentPromises = todaySessions.map(session => 
+        supabase
+          .from('payments')
+          .upsert({
+            session_id: session.id,
+            amount: 50,
+            student_paid: false,
+            tutor_paid: false,
+            created_at: new Date().toISOString()
+          })
+      )
+
+      await Promise.all(paymentPromises)
+
+      alert(`✅ Marked ${todaySessions.length} session(s) as completed!`)
+      setShowBatchComplete(false)
+      await fetchSessions()
+    } catch (error) {
+      console.error('Error batch completing sessions:', error)
+      alert('Error completing sessions. Please try again.')
+    }
+  }
+
+  // Calculate earnings (only show tutor earnings, not full price)
   const completedSessions = sessions.filter(s => s.status === 'completed')
-  const totalEarnings = completedSessions.length * 25
+  const totalEarnings = completedSessions.length * 25 // Show only tutor earnings
   const paidEarnings = completedSessions.filter(s => s.payment?.[0]?.tutor_paid).length * 25
   const unpaidEarnings = totalEarnings - paidEarnings
 
@@ -220,13 +310,13 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
         </div>
       )}
 
-      {/* Quick Stats */}
+      {/* Quick Stats - Focus on earnings only */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-cream rounded-lg shadow-soft p-6 border border-sage-green-light">
           <div className="flex items-center">
             <div className="p-2 bg-sage-green-light rounded-md">💰</div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-sage-green">Total Earnings</p>
+              <p className="text-sm font-medium text-sage-green">Your Earnings</p>
               <p className="text-2xl font-bold text-forest-green">${totalEarnings}</p>
             </div>
           </div>
@@ -276,6 +366,12 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
                 View All →
               </button>
               <button
+                onClick={() => setShowBatchComplete(true)}
+                className="bg-golden-yellow text-forest-green px-3 py-1 rounded-md hover:bg-golden-yellow-dark text-sm transition-colors"
+              >
+                Complete Today's Sessions
+              </button>
+              <button
                 onClick={() => setShowLogForm(true)}
                 className="bg-sage-green text-cream px-4 py-2 rounded-md hover:bg-forest-green text-sm transition-colors"
               >
@@ -318,13 +414,14 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                         session.status === 'completed' ? 'bg-sage-green text-cream' :
                         session.status === 'no_show' ? 'bg-red-100 text-red-800' :
+                        session.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {session.status === 'no_show' ? 'No Show' : 
                          session.status.charAt(0).toUpperCase() + session.status.slice(1)}
                       </span>
                       <p className="text-sm font-medium mt-1 text-forest-green">
-                        Your earnings: ${session.status === 'completed' ? '25' : '0'}
+                        You earn: ${session.status === 'completed' ? '25' : session.status === 'scheduled' ? '25' : '0'}
                       </p>
                     </div>
                   </div>
@@ -404,18 +501,26 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
 
   const renderSessions = () => (
     <div className="space-y-6">
-      {/* Header with Log Session Button */}
+      {/* Header with Actions */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-forest-green">My Sessions</h2>
-        <button
-          onClick={() => setShowLogForm(true)}
-          className="bg-sage-green text-cream px-4 py-2 rounded-md hover:bg-forest-green transition-colors"
-        >
-          Log New Session
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setShowBatchComplete(true)}
+            className="bg-golden-yellow text-forest-green px-4 py-2 rounded-md hover:bg-golden-yellow-dark transition-colors"
+          >
+            Complete Today's Sessions
+          </button>
+          <button
+            onClick={() => setShowLogForm(true)}
+            className="bg-sage-green text-cream px-4 py-2 rounded-md hover:bg-forest-green transition-colors"
+          >
+            Log New Session
+          </button>
+        </div>
       </div>
 
-      {/* Earnings Summary */}
+      {/* Earnings Summary - Focus on tutor earnings only */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-sage-green-light rounded-lg p-4">
           <div className="text-2xl font-bold text-forest-green">{completedSessions.length}</div>
@@ -423,7 +528,7 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
         </div>
         <div className="bg-sage-green-light rounded-lg p-4">
           <div className="text-2xl font-bold text-forest-green">${totalEarnings}</div>
-          <div className="text-forest-green text-sm">Total Earnings</div>
+          <div className="text-forest-green text-sm">Your Total Earnings</div>
         </div>
         <div className="bg-sage-green-light rounded-lg p-4">
           <div className="text-2xl font-bold text-forest-green">${paidEarnings}</div>
@@ -468,11 +573,20 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                         session.status === 'completed' ? 'bg-sage-green text-cream' :
                         session.status === 'no_show' ? 'bg-red-100 text-red-800' :
+                        session.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {session.status === 'no_show' ? 'No Show' : 
                          session.status.charAt(0).toUpperCase() + session.status.slice(1)}
                       </span>
+                      {session.status !== 'completed' && (
+                        <button
+                          onClick={() => setEditingSession(session)}
+                          className="text-sage-green hover:text-forest-green text-xs"
+                        >
+                          Edit Status
+                        </button>
+                      )}
                     </div>
                     
                     <div className="text-sm text-forest-green opacity-80 space-y-1">
@@ -486,13 +600,12 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
                   </div>
                   
                   <div className="text-right ml-4">
-                    <div className="text-lg font-bold text-forest-green">${session.price}</div>
+                    <div className="text-lg font-bold text-forest-green">
+                      You earn: ${session.status === 'completed' ? '25' : session.status === 'scheduled' ? '25' : '0'}
+                    </div>
                     {session.status === 'completed' && (
                       <div className="text-sm">
                         <div className={`${session.payment?.[0]?.tutor_paid ? 'text-sage-green' : 'text-golden-yellow'}`}>
-                          Your earnings: $25
-                        </div>
-                        <div className="text-xs text-forest-green opacity-60">
                           {session.payment?.[0]?.tutor_paid ? '✅ Paid' : '⏳ Pending'}
                         </div>
                       </div>
@@ -541,25 +654,113 @@ export default function TutorDashboard({ user }: TutorDashboardProps) {
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'sessions' && renderSessions()}
 
-      {/* Log Session Modal */}
-      {showLogForm && (
+      {/* Batch Complete Modal */}
+      {showBatchComplete && (
+        <BatchCompleteModal
+          onComplete={batchCompleteToday}
+          onCancel={() => setShowBatchComplete(false)}
+          todaySessions={sessions.filter(session => {
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+            const tomorrow = new Date(today)
+            tomorrow.setDate(tomorrow.getDate() + 1)
+            const sessionDate = new Date(session.scheduled_at)
+            return sessionDate >= today && 
+                   sessionDate < tomorrow && 
+                   session.status === 'scheduled'
+          })}
+        />
+      )}
+
+      {/* Log/Edit Session Modal */}
+      {(showLogForm || editingSession) && (
         <LogSessionForm
           tutorProfile={profile}
+          editingSession={editingSession}
           onSessionLogged={handleSessionLogged}
-          onCancel={() => setShowLogForm(false)}
+          onCancel={() => {
+            setShowLogForm(false)
+            setEditingSession(null)
+          }}
         />
       )}
     </div>
   )
 }
 
-// Log Session Form Component
+// Batch Complete Modal Component
+function BatchCompleteModal({ 
+  onComplete, 
+  onCancel, 
+  todaySessions 
+}: { 
+  onComplete: () => void
+  onCancel: () => void
+  todaySessions: any[]
+}) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-cream rounded-lg shadow-xl max-w-md w-full border border-sage-green-light">
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-forest-green mb-4">
+            Complete Today's Sessions
+          </h2>
+          
+          {todaySessions.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-forest-green mb-4">No scheduled sessions for today to mark complete.</p>
+              <button
+                onClick={onCancel}
+                className="bg-sage-green text-cream px-4 py-2 rounded-md hover:bg-forest-green transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-forest-green mb-4">
+                This will mark <strong>{todaySessions.length} session(s)</strong> as completed:
+              </p>
+              
+              <div className="bg-sage-green-light rounded-lg p-3 mb-4 max-h-32 overflow-y-auto">
+                {todaySessions.map((session, index) => (
+                  <div key={session.id} className="text-sm text-forest-green">
+                    {index + 1}. {session.student?.user?.name || 'Unknown'} - {session.subject}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={onCancel}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={onComplete}
+                  className="flex-1 bg-sage-green text-cream px-4 py-2 rounded-md hover:bg-forest-green transition-colors"
+                >
+                  Complete All
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Enhanced Log Session Form Component
 function LogSessionForm({ 
   tutorProfile, 
+  editingSession,
   onSessionLogged, 
   onCancel 
 }: { 
   tutorProfile: TutorProfile
+  editingSession?: any
   onSessionLogged: () => void
   onCancel: () => void 
 }) {
@@ -567,28 +768,30 @@ function LogSessionForm({
   const [loading, setLoading] = useState(false)
   const [students, setStudents] = useState<any[]>([])
   const [formData, setFormData] = useState({
-    student_id: '',
-    scheduled_at: '',
-    duration: 60,
-    subject: '',
-    status: 'completed' as 'completed' | 'no_show' | 'cancelled',
-    notes: ''
+    student_id: editingSession?.student_id || '',
+    scheduled_at: editingSession?.scheduled_at ? new Date(editingSession.scheduled_at).toISOString().slice(0, 16) : '',
+    duration: editingSession?.duration || 60,
+    subject: editingSession?.subject || '',
+    status: editingSession?.status || 'scheduled' as 'scheduled' | 'completed' | 'no_show' | 'cancelled',
+    notes: editingSession?.notes || ''
   })
 
   useEffect(() => {
     fetchStudents()
     
-    // Set default date/time to now with 15-minute intervals
-    const now = new Date()
-    const minutes = now.getMinutes()
-    const roundedMinutes = Math.round(minutes / 15) * 15
-    now.setMinutes(roundedMinutes, 0, 0)
-    
-    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16)
-    setFormData(prev => ({ ...prev, scheduled_at: localDateTime }))
-  }, [])
+    if (!editingSession) {
+      // Set default date/time to now with 15-minute intervals
+      const now = new Date()
+      const minutes = now.getMinutes()
+      const roundedMinutes = Math.round(minutes / 15) * 15
+      now.setMinutes(roundedMinutes, 0, 0)
+      
+      const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16)
+      setFormData(prev => ({ ...prev, scheduled_at: localDateTime }))
+    }
+  }, [editingSession])
 
   const fetchStudents = async () => {
     try {
@@ -629,7 +832,6 @@ function LogSessionForm({
         return
       }
 
-      // Create session record
       const sessionData = {
         student_id: formData.student_id,
         tutor_id: tutorProfile.id,
@@ -639,65 +841,68 @@ function LogSessionForm({
         status: formData.status,
         price: 50,
         notes: formData.notes,
-        created_at: new Date().toISOString()
+        created_at: editingSession ? editingSession.created_at : new Date().toISOString()
       }
 
-      const { data: session, error: sessionError } = await supabase
-        .from('sessions')
-        .insert(sessionData)
-        .select()
-        .single()
+      if (editingSession) {
+        // Update existing session
+        const { error: sessionError } = await supabase
+          .from('sessions')
+          .update(sessionData)
+          .eq('id', editingSession.id)
 
-      if (sessionError) {
-        console.error('Session insert error:', sessionError)
-        throw sessionError
+        if (sessionError) throw sessionError
+      } else {
+        // Create new session
+        const { data: session, error: sessionError } = await supabase
+          .from('sessions')
+          .insert(sessionData)
+          .select()
+          .single()
+
+        if (sessionError) throw sessionError
       }
 
-      // Create payment record if session was completed
+      // Create/update payment record if session is completed
       if (formData.status === 'completed') {
-        const { error: paymentError } = await supabase
-          .from('payments')
-          .insert({
-            session_id: session.id,
-            amount: 50,
-            student_paid: false,
-            tutor_paid: false,
-            created_at: new Date().toISOString()
-          })
+        const sessionId = editingSession?.id || (await supabase
+          .from('sessions')
+          .select('id')
+          .eq('tutor_id', tutorProfile.id)
+          .eq('scheduled_at', formData.scheduled_at)
+          .single()).data?.id
 
-        if (paymentError) {
-          console.error('Payment insert error:', paymentError)
+        if (sessionId) {
+          await supabase
+            .from('payments')
+            .upsert({
+              session_id: sessionId,
+              amount: 50,
+              student_paid: false,
+              tutor_paid: false,
+              created_at: new Date().toISOString()
+            })
         }
       }
 
-      alert('Session logged successfully!')
+      alert(editingSession ? 'Session updated successfully!' : 'Session logged successfully!')
       onSessionLogged()
 
     } catch (error) {
-      console.error('Error logging session:', error)
-      alert('Error logging session. Please try again.')
+      console.error('Error saving session:', error)
+      alert('Error saving session. Please try again.')
     } finally {
       setLoading(false)
     }
-  }
-
-  // Generate 15-minute time options
-  const generateTimeOptions = () => {
-    const options = []
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-        options.push(timeString)
-      }
-    }
-    return options
   }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-cream rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-sage-green-light">
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-forest-green mb-4">Log Session</h2>
+          <h2 className="text-xl font-semibold text-forest-green mb-4">
+            {editingSession ? 'Edit Session' : 'Log Session'}
+          </h2>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Student Selection */}
@@ -710,6 +915,7 @@ function LogSessionForm({
                 onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
                 className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
                 required
+                disabled={!!editingSession}
               >
                 <option value="">Select student...</option>
                 {students.map((student) => (
@@ -726,7 +932,7 @@ function LogSessionForm({
               )}
             </div>
 
-            {/* Date & Time */}
+            {/* Date & Time - 15 minute intervals */}
             <div>
               <label className="block text-sm font-medium text-forest-green mb-2">
                 Session Date & Time *
@@ -776,7 +982,7 @@ function LogSessionForm({
               </select>
             </div>
 
-            {/* Status */}
+            {/* Status - Include all options */}
             <div>
               <label className="block text-sm font-medium text-forest-green mb-2">
                 Session Status *
@@ -786,24 +992,28 @@ function LogSessionForm({
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                 className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
               >
-                <option value="completed">Completed</option>
-                <option value="no_show">Student No-Show</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="scheduled">📅 Scheduled</option>
+                <option value="completed">✅ Completed</option>
+                <option value="no_show">❌ Student No-Show</option>
+                <option value="cancelled">🚫 Cancelled</option>
               </select>
             </div>
 
-            {/* Notes */}
+            {/* Notes - With student visibility warning */}
             <div>
               <label className="block text-sm font-medium text-forest-green mb-2">
-                Notes (optional)
+                Session Notes
               </label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
                 className="w-full px-3 py-2 border border-sage-green-light rounded-md focus:outline-none focus:ring-sage-green focus:border-sage-green bg-cream text-forest-green"
-                placeholder="Any additional notes about the session..."
+                placeholder="Notes about the session, homework assigned, etc..."
               />
+              <p className="text-xs text-forest-green opacity-60 mt-1">
+                ⚠️ Note: Students can see these notes in their session history
+              </p>
             </div>
 
             {/* Action Buttons */}
@@ -821,7 +1031,7 @@ function LogSessionForm({
                 disabled={loading}
                 className="flex-1 bg-sage-green text-cream py-2 px-4 rounded-md hover:bg-forest-green disabled:opacity-50 transition-colors"
               >
-                {loading ? 'Logging...' : 'Log Session'}
+                {loading ? 'Saving...' : editingSession ? 'Update Session' : 'Log Session'}
               </button>
             </div>
           </form>

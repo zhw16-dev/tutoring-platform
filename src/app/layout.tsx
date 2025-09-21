@@ -1,18 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter, Lora } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 
 const inter = Inter({ 
   subsets: ['latin'],
   variable: '--font-inter',
-  display: 'swap'
-})
-
-const lora = Lora({ 
-  subsets: ['latin'],
-  variable: '--font-lora',
-  display: 'swap'
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700', '800'] // Added more weights for better hierarchy
 })
 
 export const metadata: Metadata = {
@@ -33,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${lora.variable}`}>
+    <html lang="en" className={inter.variable}>
       <body className={`${inter.className} antialiased`}>
         <AuthProvider>
           {children}

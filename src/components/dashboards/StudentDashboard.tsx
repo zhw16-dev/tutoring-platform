@@ -127,12 +127,13 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
     }
   }
 
-  // Calculate metrics
+  // Calculate metrics - Focus on progress, not spending
   const completedSessions = sessions.filter(s => s.status === 'completed')
   const upcomingSessions = sessions.filter(s => 
     s.status === 'scheduled' && new Date(s.scheduled_at) > new Date()
   )
-  const totalSpent = completedSessions.reduce((sum, session) => sum + (session.price || 0), 0)
+  
+  // Only calculate unpaid amount for actionable payment alerts (not display in stats)
   const unpaidAmount = completedSessions
     .filter(s => !s.payment?.[0]?.student_paid)
     .reduce((sum, session) => sum + (session.price || 0), 0)
@@ -172,8 +173,8 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
         </div>
       )}
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Learning Progress Stats - Focus on achievements, not spending */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-cream rounded-lg shadow-soft p-6 border border-sage-green-light">
           <div className="flex items-center">
             <div className="p-2 bg-sage-green-light rounded-md">📅</div>
@@ -196,20 +197,12 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
 
         <div className="bg-cream rounded-lg shadow-soft p-6 border border-sage-green-light">
           <div className="flex items-center">
-            <div className="p-2 bg-golden-yellow-light rounded-md">💰</div>
+            <div className="p-2 bg-golden-yellow-light rounded-md">⭐</div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-forest-green">Total Spent</p>
-              <p className="text-2xl font-bold text-forest-green">${totalSpent}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-cream rounded-lg shadow-soft p-6 border border-sage-green-light">
-          <div className="flex items-center">
-            <div className="p-2 bg-golden-yellow-light rounded-md">⏳</div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-forest-green">Amount Due</p>
-              <p className="text-2xl font-bold text-forest-green">${unpaidAmount}</p>
+              <p className="text-sm font-medium text-forest-green">Learning Hours</p>
+              <p className="text-2xl font-bold text-forest-green">
+                {Math.round(completedSessions.reduce((sum, s) => sum + (s.duration || 60), 0) / 60)}
+              </p>
             </div>
           </div>
         </div>
@@ -291,6 +284,11 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                       <p className="text-sm text-forest-green opacity-80">
                         {new Date(session.scheduled_at).toLocaleDateString()}
                       </p>
+                      {session.notes && (
+                        <p className="text-sm text-forest-green opacity-70 mt-1">
+                          <strong>Notes:</strong> {session.notes}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -301,7 +299,6 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                         {session.status === 'no_show' ? 'No Show' : 
                          session.status.charAt(0).toUpperCase() + session.status.slice(1)}
                       </span>
-                      <p className="text-sm font-medium mt-1 text-forest-green">${session.price}</p>
                     </div>
                   </div>
                 </div>
@@ -311,7 +308,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
         )}
       </div>
 
-      {/* Payment Due Alert */}
+      {/* Payment Due Alert - Only show if there are actually unpaid amounts */}
       {unpaidAmount > 0 && (
         <div className="bg-golden-yellow-light border border-golden-yellow rounded-lg p-4">
           <div className="flex items-start">
@@ -342,6 +339,8 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
     }
 
     const completedSessions = allSessions.filter(s => s.status === 'completed')
+    
+    // Calculate totals only for sessions view (not prominent display)
     const totalSpent = completedSessions.reduce((sum, session) => sum + (session.price || 0), 0)
     const paidAmount = completedSessions
       .filter(s => s.payment?.[0]?.student_paid)
@@ -352,7 +351,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-forest-green">My Sessions</h2>
+          <h2 className="text-2xl font-bold text-forest-green">My Learning Journey</h2>
           <Link
             href="/tutors"
             className="bg-sage-green text-cream px-4 py-2 rounded-md hover:bg-forest-green transition-colors"
@@ -361,7 +360,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
           </Link>
         </div>
 
-        {/* Spending Summary */}
+        {/* Learning Progress Summary - Focus on achievements */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-sage-green-light rounded-lg p-4">
             <div className="text-2xl font-bold text-forest-green">{allSessions.length}</div>
@@ -372,12 +371,16 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
             <div className="text-forest-green text-sm">Completed Sessions</div>
           </div>
           <div className="bg-golden-yellow-light rounded-lg p-4">
-            <div className="text-2xl font-bold text-forest-green">${totalSpent}</div>
-            <div className="text-forest-green text-sm">Total Spent</div>
+            <div className="text-2xl font-bold text-forest-green">
+              {Math.round(completedSessions.reduce((sum, s) => sum + (s.duration || 60), 0) / 60)}
+            </div>
+            <div className="text-forest-green text-sm">Learning Hours</div>
           </div>
           <div className="bg-golden-yellow-light rounded-lg p-4">
-            <div className="text-2xl font-bold text-forest-green">${unpaidAmount}</div>
-            <div className="text-forest-green text-sm">Amount Due</div>
+            <div className="text-2xl font-bold text-forest-green">
+              {new Set(completedSessions.map(s => s.subject)).size}
+            </div>
+            <div className="text-forest-green text-sm">Subjects Studied</div>
           </div>
         </div>
 
@@ -429,7 +432,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                         <p><strong>Date:</strong> {new Date(session.scheduled_at).toLocaleString()}</p>
                         <p><strong>Duration:</strong> {session.duration} minutes</p>
                         {session.notes && !session.notes.includes('New student:') && (
-                          <p><strong>Notes:</strong> {session.notes}</p>
+                          <p><strong>Session Notes:</strong> {session.notes}</p>
                         )}
                       </div>
 
@@ -453,7 +456,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                     </div>
                     
                     <div className="text-right ml-4">
-                      <div className="text-lg font-bold text-forest-green">${session.price || 50}</div>
+                      {/* Show payment status but not prominently */}
                       {(session.status === 'completed' || session.status === 'no_show') && (
                         <div className="text-sm">
                           <div className={`${session.payment?.[0]?.student_paid ? 'text-sage-green' : 'text-red-600'}`}>
@@ -469,7 +472,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
           )}
         </div>
 
-        {/* Payment Instructions */}
+        {/* Payment Instructions - Only show if there are unpaid amounts */}
         {unpaidAmount > 0 && (
           <div className="bg-golden-yellow-light border border-golden-yellow rounded-lg p-4">
             <div className="flex items-start">
@@ -515,7 +518,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                   : 'border-transparent text-forest-green opacity-60 hover:text-forest-green hover:border-sage-green-light'
               }`}
             >
-              📚 My Sessions
+              📚 My Learning Journey
             </button>
           </nav>
         </div>
