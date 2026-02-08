@@ -1,67 +1,107 @@
 'use client'
 
-import { useAuth } from '@/contexts/AuthContext'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { useEffect } from 'react'
+import { useApp } from '@/context/AppContext'
 
-export default function Home() {
-  const { user, loading } = useAuth()
+export default function LoginPage() {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const { state, dispatch } = useApp()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && user) {
+    if (state.isLoggedIn) {
       router.push('/dashboard')
     }
-  }, [user, loading, router])
+  }, [state.isLoggedIn, router])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <div className="animate-pulse-sage text-forest-green">Loading...</div>
-      </div>
-    )
+  if (state.isLoggedIn) {
+    return null
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (username === 'demo' && password === 'demo123') {
+      setError('')
+      dispatch({ type: 'LOGIN' })
+      router.push('/dashboard')
+    } else {
+      setError('Invalid credentials. Try demo / demo123')
+    }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cream to-sage-green-light flex items-center justify-center">
-      <div className="max-w-md w-full space-y-8 p-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-forest-green mb-2 font-serif">
-            Will's Tutoring
-          </h1>
-          <p className="text-forest-green mb-8 font-sans">
-            Connect students with qualified tutors
-          </p>
+    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="bg-white rounded-lg border border-[var(--color-border)] p-8">
+          <div className="mb-8">
+            <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
+              Will&apos;s Tutoring
+            </h1>
+            <p className="text-sm text-[var(--color-text-tertiary)] mt-1">Product Demo</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">
+                Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                className="w-full text-sm px-3 py-2.5 rounded-lg border border-[var(--color-border)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-tertiary)]"
+                placeholder="Enter username"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full text-sm px-3 py-2.5 rounded-lg border border-[var(--color-border)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-tertiary)]"
+                placeholder="Enter password"
+              />
+            </div>
+
+            {error && (
+              <p className="text-[var(--color-error)] text-sm">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full bg-[var(--color-accent)] text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
+            >
+              Sign In
+            </button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
+            <p className="text-xs text-[var(--color-text-tertiary)] mb-2">Demo credentials:</p>
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              Username: <span className="font-medium">demo</span>
+            </p>
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              Password: <span className="font-medium">demo123</span>
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          <Link
-            href="/register"
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-soft text-sm font-medium text-cream bg-sage-green hover:bg-forest-green focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sage-green transition-colors"
+        <p className="text-center mt-6">
+          <a
+            href="https://wzhai.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
           >
-            Get Started
-          </Link>
-          
-          <Link
-            href="/login"
-            className="w-full flex justify-center py-3 px-4 border border-sage-green-light rounded-md shadow-soft text-sm font-medium text-forest-green bg-cream hover:bg-sage-green-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sage-green transition-colors"
-          >
-            Sign In
-          </Link>
-        </div>
-
-        <div className="text-center text-sm text-forest-green opacity-80 space-y-2">
-          <p><strong>Students:</strong> Find and book sessions with tutors</p>
-          <p><strong>Tutors:</strong> Manage your availability and students</p>
-        </div>
-
-        {/* Decorative illustration elements */}
-        <div className="text-center text-4xl opacity-60 space-x-4">
-          <span>📚</span>
-          <span>🎓</span>
-          <span>✏️</span>
-        </div>
+            Built by Will Zhai · Portfolio ↗
+          </a>
+        </p>
       </div>
     </div>
   )

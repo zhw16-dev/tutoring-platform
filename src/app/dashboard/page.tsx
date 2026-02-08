@@ -1,176 +1,119 @@
 'use client'
 
-import { useAuth } from '@/contexts/AuthContext'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { User } from '@/types/database'
-import StudentDashboard from '@/components/dashboards/StudentDashboard'
-import TutorDashboard from '@/components/dashboards/TutorDashboard'
-import AdminDashboard from '@/components/dashboards/AdminDashboard'
+import { useApp } from '@/context/AppContext'
+import Header from '@/components/layout/Header'
+import StudentDashboard from '@/components/student/StudentDashboard'
+import BrowseTutors from '@/components/student/BrowseTutors'
+import StudentSessions from '@/components/student/StudentSessions'
+import TutorDashboard from '@/components/tutor/TutorDashboard'
+import TutorSessions from '@/components/tutor/TutorSessions'
+import TutorProfile from '@/components/tutor/TutorProfile'
+import AdminOverview from '@/components/admin/AdminOverview'
+import AdminSessions from '@/components/admin/AdminSessions'
+import AdminFinancials from '@/components/admin/AdminFinancials'
+import AdminUsers from '@/components/admin/AdminUsers'
 
-export default function Dashboard() {
-  const { user, loading, signOut } = useAuth()
-  const [profile, setProfile] = useState<User | null>(null)
-  const [profileLoading, setProfileLoading] = useState(true)
+const TABS: Record<string, { key: string; label: string }[]> = {
+  student: [
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'browse', label: 'Browse Tutors' },
+    { key: 'sessions', label: 'My Sessions' },
+  ],
+  tutor: [
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'sessions', label: 'My Sessions' },
+    { key: 'profile', label: 'Profile' },
+  ],
+  admin: [
+    { key: 'overview', label: 'Overview' },
+    { key: 'sessions', label: 'Sessions' },
+    { key: 'financials', label: 'Financials' },
+    { key: 'users', label: 'Users' },
+  ],
+}
+
+export default function DashboardPage() {
+  const { state } = useApp()
   const router = useRouter()
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [fadeKey, setFadeKey] = useState(0)
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-      return
+    if (!state.isLoggedIn) {
+      router.push('/')
     }
+  }, [state.isLoggedIn, router])
 
-    if (user) {
-      fetchProfile()
-    }
-  }, [user, loading, router])
+  useEffect(() => {
+    const tabs = TABS[state.currentRole]
+    setActiveTab(tabs[0].key)
+    setFadeKey(prev => prev + 1)
+  }, [state.currentRole])
 
-  const fetchProfile = async () => {
-    if (!user) return
-
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (error) {
-        console.error('Error fetching profile:', error)
-      } else if (data) {
-        setProfile(data)
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error)
-    } finally {
-      setProfileLoading(false)
-    }
+  function handleTabChange(key: string) {
+    setActiveTab(key)
+    setFadeKey(prev => prev + 1)
   }
 
-  const handleSignOut = async () => {
-    await signOut()
-    router.push('/login')
-  }
+  if (!state.isLoggedIn) return null
 
-  // Loading states
-  if (loading || profileLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-cream">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-sage-green mx-auto"></div>
-          <p className="mt-4 text-forest-green">Loading your dashboard...</p>
-        </div>
-      </div>
-    )
-  }
+  const tabs = TABS[state.currentRole]
 
-  // Not authenticated
-  if (!user || !profile) {
-    return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-forest-green mb-4">Unable to load your profile.</p>
-          <button
-            onClick={handleSignOut}
-            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // Render role-specific dashboard
-  const renderDashboard = () => {
-    switch (profile.role) {
+  function renderContent() {
+    switch (state.currentRole) {
       case 'student':
-        return <StudentDashboard user={profile} />
+        switch (activeTab) {
+          case 'dashboard': return <StudentDashboard onNavigate={handleTabChange} />
+          case 'browse': return <BrowseTutors />
+          case 'sessions': return <StudentSessions />
+        }
+        break
       case 'tutor':
-        return <TutorDashboard user={profile} />
+        switch (activeTab) {
+          case 'dashboard': return <TutorDashboard onNavigate={handleTabChange} />
+          case 'sessions': return <TutorSessions />
+          case 'profile': return <TutorProfile />
+        }
+        break
       case 'admin':
-        return <AdminDashboard user={profile} />
-      default:
-        return (
-          <div className="text-center py-12">
-            <p className="text-forest-green">Unknown user role: {profile.role}</p>
-          </div>
-        )
+        switch (activeTab) {
+          case 'overview': return <AdminOverview />
+          case 'sessions': return <AdminSessions />
+          case 'financials': return <AdminFinancials />
+          case 'users': return <AdminUsers />
+        }
+        break
     }
+    return null
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      {/* Navigation Header */}
-      <nav className="bg-cream shadow-soft border-b border-sage-green-light">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center space-x-8">
-              <h1 className="text-xl font-semibold text-forest-green font-serif">
-                Will's Tutoring
-              </h1>
-              
-              {/* Role-specific navigation */}
-              {profile.role === 'student' && (
-                <div className="hidden md:flex space-x-4">
-                  <a
-                    href="/dashboard"
-                    className="text-forest-green hover:text-sage-green px-3 py-2 text-sm font-medium transition-colors"
-                  >
-                    Dashboard
-                  </a>
-                  <a
-                    href="/tutors"
-                    className="text-forest-green hover:text-sage-green px-3 py-2 text-sm font-medium transition-colors"
-                  >
-                    Find Tutors
-                  </a>
-                </div>
-              )}
-              
-              {profile.role === 'tutor' && (
-                <div className="hidden md:flex space-x-4">
-                  <a
-                    href="/dashboard"
-                    className="text-forest-green hover:text-sage-green px-3 py-2 text-sm font-medium transition-colors"
-                  >
-                    Dashboard
-                  </a>
-                </div>
-              )}
-
-              <div className="ml-6">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  profile.role === 'admin' 
-                    ? 'bg-red-100 text-red-800'
-                    : profile.role === 'tutor' 
-                    ? 'badge-active' 
-                    : 'badge-pending'
-                }`}>
-                  {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <span className="text-forest-green text-sm">
-                Welcome, {profile.name}
-              </span>
-              <button
-                onClick={handleSignOut}
-                className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[var(--color-bg)]">
+      <Header />
+      <main className="max-w-[1200px] mx-auto px-4 py-6 md:px-6 md:py-8">
+        {/* Tabs */}
+        <div className="flex gap-0 border-b border-[var(--color-border)] mb-8 overflow-x-auto">
+          {tabs.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={`pb-3 px-1 mr-6 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab.key
+                  ? 'text-[var(--color-accent)] border-[var(--color-accent)]'
+                  : 'text-[var(--color-text-secondary)] border-transparent hover:text-[var(--color-text-primary)]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-      </nav>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {renderDashboard()}
+        {/* Content */}
+        <div key={fadeKey} className="animate-[fadeIn_150ms_ease-out]">
+          {renderContent()}
+        </div>
       </main>
     </div>
   )

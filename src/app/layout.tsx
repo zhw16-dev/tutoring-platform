@@ -1,25 +1,22 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { AuthProvider } from '@/contexts/AuthContext'
+import { AppProvider } from '@/context/AppContext'
+import { ToastProvider } from '@/components/shared/Toast'
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-inter',
   display: 'swap',
-  weight: ['300', '400', '500', '600', '700', '800'] // Added more weights for better hierarchy
 })
 
 export const metadata: Metadata = {
-  title: "Will's Tutoring",
-  description: 'Connect students with qualified tutors - Professional tutoring platform',
-  keywords: 'tutoring, education, learning, academic support, homework help',
-  authors: [{ name: "Will's Tutoring" }],
+  title: "Will's Tutoring · Product Demo",
+  description: 'A role-based tutoring management platform — Product demo by Will Zhai',
   openGraph: {
-    title: "Will's Tutoring",
-    description: 'Connect students with qualified tutors',
+    title: "Will's Tutoring · Product Demo",
+    description: 'A role-based tutoring management platform built to eliminate coordination chaos.',
     type: 'website',
-  }
+  },
 }
 
 export default function RootLayout({
@@ -28,11 +25,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className={`${inter.className} antialiased`}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+    <html lang="en" className={inter.className}>
+      <body className="antialiased">
+        <AppProvider>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
+        </AppProvider>
       </body>
     </html>
   )
