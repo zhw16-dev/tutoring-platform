@@ -32,6 +32,11 @@ export default function LoginPage() {
     }
   }
 
+  function handleLaunchDemo() {
+    dispatch({ type: 'LOGIN' })
+    router.push('/dashboard')
+  }
+
   return (
     <div className="min-h-screen bg-[var(--color-bg)] flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -82,7 +87,13 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
-            <p className="text-xs text-[var(--color-text-tertiary)] mb-2">Demo credentials:</p>
+            <button
+              onClick={handleLaunchDemo}
+              className="w-full bg-white text-[var(--color-accent)] text-sm font-medium px-4 py-2.5 rounded-lg border border-[var(--color-accent)] hover:bg-[var(--color-accent-light)] transition-colors mb-4"
+            >
+              Launch Demo with Guided Tour
+            </button>
+            <p className="text-xs text-[var(--color-text-tertiary)] mb-2">Or sign in manually:</p>
             <p className="text-xs text-[var(--color-text-secondary)]">
               Username: <span className="font-medium">demo</span>
             </p>

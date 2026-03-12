@@ -42,7 +42,7 @@ export default function TutorSessions() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div data-tour="tutor-sessions-list" className="space-y-6">
       <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">My Sessions</h1>
 
       {/* Sub-tabs */}

@@ -61,7 +61,7 @@ export default function TutorDashboard({ onNavigate }: TutorDashboardProps) {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+      <div data-tour="tutor-metrics" className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <MetricCard label="Upcoming Sessions" value={upcoming.length} />
         <MetricCard label="Completed This Month" value={completedThisMonth.length} />
         <MetricCard label="Total Earnings" value={`$${totalEarnings}`} accent="success" />
@@ -108,7 +108,7 @@ export default function TutorDashboard({ onNavigate }: TutorDashboardProps) {
       </div>
 
       {/* Weekly chart */}
-      <div>
+      <div data-tour="tutor-weekly-chart">
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Sessions per Week</h2>
         <div className="bg-white rounded-lg border border-[var(--color-border)] p-6">
           <div className="space-y-3">

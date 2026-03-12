@@ -80,7 +80,7 @@ export default function AdminOverview() {
       <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Admin Overview</h1>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+      <div data-tour="admin-metrics" className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <MetricCard label="Sessions This Month" value={sessionsThisMonth.length} />
         <MetricCard label="Revenue (Month)" value={`$${revenueThisMonth}`} accent="success" />
         <MetricCard label="Active Tutors" value={activeTutors} />
@@ -92,7 +92,7 @@ export default function AdminOverview() {
       </div>
 
       {/* Attention items */}
-      <div>
+      <div data-tour="admin-attention">
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Needs Attention</h2>
         <div className="bg-white rounded-lg border border-[var(--color-border)] p-6">
           {!hasAttention ? (

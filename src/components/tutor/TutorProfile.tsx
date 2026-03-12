@@ -71,7 +71,7 @@ export default function TutorProfile() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg border border-[var(--color-border)] p-6 space-y-6">
+      <div data-tour="tutor-profile" className="bg-white rounded-lg border border-[var(--color-border)] p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Avatar name={tutor.name} />

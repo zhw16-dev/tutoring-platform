@@ -53,12 +53,13 @@ export default function BrowseTutors() {
       {filtered.length === 0 ? (
         <EmptyState message="No tutors match your filters." />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filtered.map(tutor => (
+        <div data-tour="student-browse-grid" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filtered.map((tutor, i) => (
             <TutorCard
               key={tutor.id}
               tutor={tutor}
               onBook={setBookingTutor}
+              isFirst={i === 0}
             />
           ))}
         </div>

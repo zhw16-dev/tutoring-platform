@@ -6,9 +6,10 @@ import Avatar from '@/components/shared/Avatar'
 interface TutorCardProps {
   tutor: Tutor
   onBook: (tutor: Tutor) => void
+  isFirst?: boolean
 }
 
-export default function TutorCard({ tutor, onBook }: TutorCardProps) {
+export default function TutorCard({ tutor, onBook, isFirst }: TutorCardProps) {
   return (
     <div className="bg-white rounded-lg border border-[var(--color-border)] p-6 hover:border-[var(--color-border-hover)] transition-colors">
       <div className="flex items-start gap-3 mb-3">
@@ -48,6 +49,7 @@ export default function TutorCard({ tutor, onBook }: TutorCardProps) {
         <button
           onClick={() => onBook(tutor)}
           className="bg-[var(--color-accent)] text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
+          {...(isFirst ? { 'data-tour': 'student-book-button' } : {})}
         >
           Book Session
         </button>

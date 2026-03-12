@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/context/AppContext'
+import { TourProvider } from '@/context/TourContext'
+import { Role } from '@/types'
 import Header from '@/components/layout/Header'
 import StudentDashboard from '@/components/student/StudentDashboard'
 import BrowseTutors from '@/components/student/BrowseTutors'
@@ -14,6 +16,12 @@ import AdminOverview from '@/components/admin/AdminOverview'
 import AdminSessions from '@/components/admin/AdminSessions'
 import AdminFinancials from '@/components/admin/AdminFinancials'
 import AdminUsers from '@/components/admin/AdminUsers'
+import TourOverlay from '@/components/tour/TourOverlay'
+import TourTooltip from '@/components/tour/TourTooltip'
+import TourWelcome from '@/components/tour/TourWelcome'
+import TourComplete from '@/components/tour/TourComplete'
+import TourProgressBar from '@/components/tour/TourProgressBar'
+import TourInterstitial from '@/components/tour/TourInterstitial'
 
 const TABS: Record<string, { key: string; label: string }[]> = {
   student: [
@@ -35,7 +43,7 @@ const TABS: Record<string, { key: string; label: string }[]> = {
 }
 
 export default function DashboardPage() {
-  const { state } = useApp()
+  const { state, dispatch } = useApp()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('dashboard')
   const [fadeKey, setFadeKey] = useState(0)
@@ -52,10 +60,14 @@ export default function DashboardPage() {
     setFadeKey(prev => prev + 1)
   }, [state.currentRole])
 
-  function handleTabChange(key: string) {
+  const handleTabChange = useCallback((key: string) => {
     setActiveTab(key)
     setFadeKey(prev => prev + 1)
-  }
+  }, [])
+
+  const handleRoleChange = useCallback((role: Role) => {
+    dispatch({ type: 'SET_ROLE', payload: role })
+  }, [dispatch])
 
   if (!state.isLoggedIn) return null
 
@@ -90,31 +102,45 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
-      <Header />
-      <main className="max-w-[1200px] mx-auto px-4 py-6 md:px-6 md:py-8">
-        {/* Tabs */}
-        <div className="flex gap-0 border-b border-[var(--color-border)] mb-8 overflow-x-auto">
-          {tabs.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => handleTabChange(tab.key)}
-              className={`pb-3 px-1 mr-6 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab.key
-                  ? 'text-[var(--color-accent)] border-[var(--color-accent)]'
-                  : 'text-[var(--color-text-secondary)] border-transparent hover:text-[var(--color-text-primary)]'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+    <TourProvider
+      onRoleChange={handleRoleChange}
+      onTabChange={handleTabChange}
+      currentRole={state.currentRole}
+    >
+      <div className="min-h-screen bg-[var(--color-bg)]">
+        <TourProgressBar />
+        <Header />
+        <main className="max-w-[1200px] mx-auto px-4 py-6 md:px-6 md:py-8">
+          {/* Tabs */}
+          <div className="flex gap-0 border-b border-[var(--color-border)] mb-8 overflow-x-auto">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => handleTabChange(tab.key)}
+                className={`pb-3 px-1 mr-6 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === tab.key
+                    ? 'text-[var(--color-accent)] border-[var(--color-accent)]'
+                    : 'text-[var(--color-text-secondary)] border-transparent hover:text-[var(--color-text-primary)]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-        {/* Content */}
-        <div key={fadeKey} className="animate-[fadeIn_150ms_ease-out]">
-          {renderContent()}
-        </div>
-      </main>
-    </div>
+          {/* Content */}
+          <div key={fadeKey} className="animate-[fadeIn_150ms_ease-out]">
+            {renderContent()}
+          </div>
+        </main>
+
+        {/* Tour components */}
+        <TourOverlay />
+        <TourTooltip />
+        <TourWelcome />
+        <TourComplete />
+        <TourInterstitial />
+      </div>
+    </TourProvider>
   )
 }

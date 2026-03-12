@@ -3,6 +3,7 @@
 import { useApp } from '@/context/AppContext'
 import { useRouter } from 'next/navigation'
 import RoleSwitcher from './RoleSwitcher'
+import TourRestartButton from '@/components/tour/TourRestartButton'
 
 export default function Header() {
   const { dispatch } = useApp()
@@ -20,13 +21,14 @@ export default function Header() {
           <span className="text-base font-semibold text-[var(--color-text-primary)]">
             Will&apos;s Tutoring
           </span>
-          <span className="text-[var(--color-text-tertiary)]">·</span>
+          <span className="text-[var(--color-text-tertiary)]">&middot;</span>
           <span className="text-sm text-[var(--color-text-tertiary)]">Product Demo</span>
         </div>
         <div className="flex items-center gap-4">
           <div className="hidden sm:block">
             <RoleSwitcher />
           </div>
+          <TourRestartButton />
           <button
             onClick={handleLogout}
             className="text-[var(--color-text-secondary)] text-sm font-medium px-3 py-2 rounded-lg hover:bg-[var(--color-bg)] hover:text-[var(--color-text-primary)] transition-colors"

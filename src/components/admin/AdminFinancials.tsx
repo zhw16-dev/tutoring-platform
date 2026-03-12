@@ -56,7 +56,7 @@ export default function AdminFinancials() {
       </div>
 
       {/* Outstanding student payments */}
-      <div>
+      <div data-tour="admin-collections">
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Outstanding Student Payments</h2>
         {outstandingStudentPayments.length === 0 ? (
           <div className="bg-white rounded-lg border border-[var(--color-border)] p-6">
@@ -133,7 +133,7 @@ export default function AdminFinancials() {
       </div>
 
       {/* Pending tutor payouts */}
-      <div>
+      <div data-tour="admin-payouts">
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Pending Tutor Payouts</h2>
         {pendingTutorPayouts.length === 0 ? (
           <div className="bg-white rounded-lg border border-[var(--color-border)] p-6">
