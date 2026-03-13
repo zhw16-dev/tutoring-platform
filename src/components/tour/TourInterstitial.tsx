@@ -8,9 +8,7 @@ export default function TourInterstitial() {
 
   if (!state.isTransitioning || !state.isActive) return null
 
-  // Determine which phase we're transitioning TO
-  const currentPhase = state.phase
-  const label = currentPhase ? getPhaseLabel(currentPhase) : ''
+  const label = state.transitionTarget ? getPhaseLabel(state.transitionTarget) : ''
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">

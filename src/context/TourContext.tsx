@@ -13,6 +13,7 @@ interface TourState {
   phase: TourPhase
   hasSeenWelcome: boolean
   isTransitioning: boolean
+  transitionTarget: TourPhase
 }
 
 type TourAction =
@@ -23,7 +24,7 @@ type TourAction =
   | { type: 'SKIP_TOUR' }
   | { type: 'COMPLETE_TOUR' }
   | { type: 'RESTART_TOUR' }
-  | { type: 'SET_TRANSITIONING'; payload: boolean }
+  | { type: 'SET_TRANSITIONING'; payload: boolean; target?: TourPhase }
   | { type: 'CANCEL_TOUR' }
 
 const initialState: TourState = {
@@ -32,6 +33,7 @@ const initialState: TourState = {
   phase: null,
   hasSeenWelcome: false,
   isTransitioning: false,
+  transitionTarget: null,
 }
 
 function tourReducer(state: TourState, action: TourAction): TourState {
@@ -66,7 +68,7 @@ function tourReducer(state: TourState, action: TourAction): TourState {
     case 'RESTART_TOUR':
       return { ...state, isActive: true, currentStepIndex: 0, phase: 'student' }
     case 'SET_TRANSITIONING':
-      return { ...state, isTransitioning: action.payload }
+      return { ...state, isTransitioning: action.payload, transitionTarget: action.payload ? (action.target ?? null) : null }
     case 'CANCEL_TOUR':
       return { ...initialState, hasSeenWelcome: true, phase: null }
     default:
@@ -133,7 +135,7 @@ export function TourProvider({ children, onRoleChange, onTabChange, currentRole 
     const nextPhase = TOUR_STEPS[nextIndex]?.phase
 
     if (currentPhase !== nextPhase) {
-      dispatch({ type: 'SET_TRANSITIONING', payload: true })
+      dispatch({ type: 'SET_TRANSITIONING', payload: true, target: nextPhase as TourPhase })
       executeAutoAction(nextIndex)
       setTimeout(() => {
         dispatch({ type: 'NEXT_STEP' })
@@ -151,11 +153,27 @@ export function TourProvider({ children, onRoleChange, onTabChange, currentRole 
 
   const prevStep = useCallback(() => {
     const prevIndex = Math.max(0, state.currentStepIndex - 1)
-    executeAutoAction(prevIndex)
-    setTimeout(() => {
-      dispatch({ type: 'PREV_STEP' })
-    }, 50)
-  }, [state.currentStepIndex, executeAutoAction])
+    const currentPhase = TOUR_STEPS[state.currentStepIndex]?.phase
+    const prevPhase = TOUR_STEPS[prevIndex]?.phase
+
+    if (currentPhase !== prevPhase) {
+      dispatch({ type: 'SET_TRANSITIONING', payload: true, target: prevPhase as TourPhase })
+      // Switch role to match the previous phase
+      if (prevPhase) {
+        onRoleChange(prevPhase as Role)
+      }
+      executeAutoAction(prevIndex)
+      setTimeout(() => {
+        dispatch({ type: 'PREV_STEP' })
+        dispatch({ type: 'SET_TRANSITIONING', payload: false })
+      }, 400)
+    } else {
+      executeAutoAction(prevIndex)
+      setTimeout(() => {
+        dispatch({ type: 'PREV_STEP' })
+      }, 50)
+    }
+  }, [state.currentStepIndex, executeAutoAction, onRoleChange])
 
   const skipTour = useCallback(() => {
     trackTourEvent('tour_skipped', { step: String(state.currentStepIndex) })

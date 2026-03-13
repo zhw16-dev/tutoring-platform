@@ -1,65 +1,68 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTour } from '@/context/TourContext'
 
 interface SpotlightRect {
-  x: number
-  y: number
+  centerX: number
+  centerY: number
   width: number
   height: number
+}
+
+function getTargetSpotlight(selector: string): SpotlightRect | null {
+  const target = document.querySelector(selector)
+  if (!target) return null
+  const rect = target.getBoundingClientRect()
+  const padding = 8
+  return {
+    centerX: rect.left + rect.width / 2,
+    centerY: rect.top + rect.height / 2,
+    width: rect.width + padding * 2,
+    height: rect.height + padding * 2,
+  }
 }
 
 export default function TourOverlay() {
   const { state, currentStep, skipTour } = useTour()
   const [spotlight, setSpotlight] = useState<SpotlightRect | null>(null)
+  const pendingRef = useRef(false)
 
-  const calculateSpotlight = useCallback(() => {
-    if (!currentStep) {
-      setSpotlight(null)
-      return
-    }
-
-    const target = document.querySelector(currentStep.targetSelector)
-    if (!target) {
-      setSpotlight(null)
-      return
-    }
-
-    const rect = target.getBoundingClientRect()
-    const padding = 8
-
-    setSpotlight({
-      x: rect.left - padding,
-      y: rect.top - padding,
-      width: rect.width + padding * 2,
-      height: rect.height + padding * 2,
-    })
-  }, [currentStep])
-
+  // On step change: hold old position, let scroll finish, then update once
   useEffect(() => {
-    if (!state.isActive || state.isTransitioning) return
+    if (!state.isActive || state.isTransitioning || !currentStep) return
 
-    const timer = setTimeout(calculateSpotlight, 250)
-    return () => clearTimeout(timer)
-  }, [state.isActive, state.isTransitioning, state.currentStepIndex, calculateSpotlight])
+    pendingRef.current = true
 
-  // Recalculate on resize/scroll
-  useEffect(() => {
-    if (!state.isActive) return
-    let timeout: NodeJS.Timeout
-    function handleResize() {
-      clearTimeout(timeout)
-      timeout = setTimeout(calculateSpotlight, 100)
-    }
-    window.addEventListener('resize', handleResize)
-    window.addEventListener('scroll', handleResize, true)
+    const timer = setTimeout(() => {
+      const rect = getTargetSpotlight(currentStep.targetSelector)
+      if (rect) setSpotlight(rect)
+      pendingRef.current = false
+    }, 300)
+
     return () => {
-      window.removeEventListener('resize', handleResize)
-      window.removeEventListener('scroll', handleResize, true)
-      clearTimeout(timeout)
+      clearTimeout(timer)
+      pendingRef.current = false
     }
-  }, [state.isActive, calculateSpotlight])
+  }, [state.isActive, state.isTransitioning, state.currentStepIndex, currentStep])
+
+  // Keep spotlight in sync with resize/scroll after placement
+  useEffect(() => {
+    if (!state.isActive || !currentStep) return
+
+    function handleUpdate() {
+      if (pendingRef.current) return
+      const rect = getTargetSpotlight(currentStep!.targetSelector)
+      if (rect) setSpotlight(rect)
+    }
+
+    window.addEventListener('resize', handleUpdate)
+    window.addEventListener('scroll', handleUpdate, true)
+    return () => {
+      window.removeEventListener('resize', handleUpdate)
+      window.removeEventListener('scroll', handleUpdate, true)
+    }
+  }, [state.isActive, currentStep])
 
   if (!state.isActive) return null
 
@@ -68,37 +71,22 @@ export default function TourOverlay() {
       className="fixed inset-0 z-[9998]"
       onClick={skipTour}
     >
-      <svg
-        className="absolute inset-0 w-full h-full"
-        style={{ pointerEvents: 'none' }}
-      >
-        <defs>
-          <mask id="tour-spotlight-mask">
-            <rect x="0" y="0" width="100%" height="100%" fill="white" />
-            {spotlight && (
-              <rect
-                x={spotlight.x}
-                y={spotlight.y}
-                width={spotlight.width}
-                height={spotlight.height}
-                rx="12"
-                ry="12"
-                fill="black"
-                style={{ transition: 'all 200ms ease-in-out' }}
-              />
-            )}
-          </mask>
-        </defs>
-        <rect
-          x="0"
-          y="0"
-          width="100%"
-          height="100%"
-          fill="rgba(0,0,0,0.5)"
-          mask="url(#tour-spotlight-mask)"
-          style={{ pointerEvents: 'auto' }}
+      {spotlight && (
+        <div
+          style={{
+            position: 'fixed',
+            left: spotlight.centerX,
+            top: spotlight.centerY,
+            width: spotlight.width,
+            height: spotlight.height,
+            transform: 'translate(-50%, -50%)',
+            borderRadius: 12,
+            boxShadow: '0 0 0 200vmax rgba(0,0,0,0.5)',
+            pointerEvents: 'none',
+            transition: 'left 200ms ease-in-out, top 200ms ease-in-out, width 200ms ease-in-out, height 200ms ease-in-out',
+          }}
         />
-      </svg>
+      )}
     </div>
   )
 }
